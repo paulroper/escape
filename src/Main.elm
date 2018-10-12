@@ -13,7 +13,8 @@ import Task
 
 
 type alias Model =
-    { playerX : Int
+    { playerHeading : Action
+    , playerX : Int
     , playerY : Int
     , viewportHeight : Int
     , viewportWidth : Int
@@ -44,12 +45,24 @@ type Msg
 
 
 main =
-    Browser.element { init = init, subscriptions = subscriptions, update = update, view = view }
+    Browser.element
+        { init = init
+        , subscriptions = subscriptions
+        , update = update
+        , view = view
+        }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { playerX = 0, playerY = 0, viewportHeight = 0, viewportWidth = 0 }, Task.perform GetViewport Browser.Dom.getViewport )
+    ( { playerHeading = Right
+      , playerX = 0
+      , playerY = 0
+      , viewportHeight = 0
+      , viewportWidth = 0
+      }
+    , Task.perform GetViewport Browser.Dom.getViewport
+    )
 
 
 
@@ -60,10 +73,20 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         GetViewport viewport ->
-            ( { model | viewportHeight = round viewport.viewport.height, viewportWidth = round viewport.viewport.width }, Cmd.none )
+            ( { model
+                | viewportHeight = round viewport.viewport.height
+                , viewportWidth = round viewport.viewport.width
+              }
+            , Cmd.none
+            )
 
         UpdateViewport innerHeight innerWidth ->
-            ( { model | viewportHeight = innerHeight, viewportWidth = innerWidth }, Cmd.none )
+            ( { model
+                | viewportHeight = innerHeight
+                , viewportWidth = innerWidth
+              }
+            , Cmd.none
+            )
 
         Update key modifier ->
             updateKey key modifier model
@@ -84,16 +107,40 @@ updateKey key modifier model =
     in
     case key of
         Up ->
-            ( Debug.log "model" { model | playerY = Basics.max (model.playerY - offset) 0 }, Cmd.none )
+            ( Debug.log "model"
+                { model
+                    | playerHeading = Up
+                    , playerY = Basics.max (model.playerY - offset) 0
+                }
+            , Cmd.none
+            )
 
         Down ->
-            ( Debug.log "model" { model | playerY = Basics.min (model.playerY + offset) (model.viewportHeight - playerHeight) }, Cmd.none )
+            ( Debug.log "model"
+                { model
+                    | playerHeading = Down
+                    , playerY = Basics.min (model.playerY + offset) (model.viewportHeight - playerHeight)
+                }
+            , Cmd.none
+            )
 
         Left ->
-            ( Debug.log "model" { model | playerX = Basics.max (model.playerX - offset) 0 }, Cmd.none )
+            ( Debug.log "model"
+                { model
+                    | playerHeading = Left
+                    , playerX = Basics.max (model.playerX - offset) 0
+                }
+            , Cmd.none
+            )
 
         Right ->
-            ( Debug.log "model" { model | playerX = Basics.min (model.playerX + offset) (model.viewportWidth - playerWidth) }, Cmd.none )
+            ( Debug.log "model"
+                { model
+                    | playerHeading = Right
+                    , playerX = Basics.min (model.playerX + offset) (model.viewportWidth - playerWidth)
+                }
+            , Cmd.none
+            )
 
         Other ->
             ( model, Cmd.none )
@@ -118,7 +165,7 @@ subscriptions _ =
 view : Model -> Html Msg
 view model =
     div []
-        [ player model.playerX model.playerY
+        [ player model.playerHeading model.playerX model.playerY
         ]
 
 
@@ -189,8 +236,8 @@ playerWidth =
     50
 
 
-player : Int -> Int -> Html Msg
-player x y =
+player : Action -> Int -> Int -> Html Msg
+player heading x y =
     let
         playerHeightStr =
             String.fromInt playerHeight
@@ -206,7 +253,6 @@ player x y =
         [ svg
             [ width playerWidthStr
             , height playerHeightStr
-            , viewBox ("0 0" ++ " " ++ playerWidthStr ++ " " ++ playerHeightStr)
             ]
             [ rect
                 [ fill "blue"
@@ -214,8 +260,48 @@ player x y =
                 , height playerHeightStr
                 ]
                 []
+            , chevron heading
             ]
         ]
+
+
+chevron : Action -> Html Msg
+chevron heading =
+    let
+        iconHeight =
+            22
+
+        iconWidth =
+            16
+
+        icon : Int -> Int -> String -> Html Msg
+        icon xPos yPos transformation =
+            svg
+                [ fill "white"
+                , overflow "visible"
+                , x (String.fromInt xPos)
+                , y (String.fromInt yPos)
+                ]
+                [ Svg.path
+                    [ d "m 4 1 L 10 1 L 20 12 L 10 23 L 4 23 L 14 12 Z"
+                    , fill "white"
+                    , Html.Attributes.style "transform" transformation
+                    ]
+                    []
+                ]
+    in
+    case heading of
+        Up ->
+            icon (playerWidth // 2 - (iconHeight // 2)) (playerHeight // 2 + (iconWidth // 2)) "rotate(-90deg)"
+
+        Down ->
+            icon (playerWidth // 2 + (iconHeight // 2)) (playerHeight // 2 - (iconWidth // 2)) "rotate(90deg)"
+
+        Left ->
+            icon (playerWidth // 2 + (iconWidth // 2)) (playerHeight // 2 + (iconHeight // 2)) "rotate(180deg)"
+
+        _ ->
+            icon (playerWidth // 2 - (iconWidth // 2)) (playerHeight // 2 - (iconHeight // 2)) ""
 
 
 coordinateToPixels : Int -> String
