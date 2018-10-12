@@ -1,6 +1,7 @@
 module Main exposing (Msg(..), main, update, view)
 
 import Browser
+import Browser.Dom
 import Browser.Events
 import Html exposing (Html, button, div, text)
 import Html.Attributes exposing (style)
@@ -8,11 +9,14 @@ import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
+import Task
 
 
 type alias Model =
     { playerX : Int
     , playerY : Int
+    , viewportHeight : Int
+    , viewportWidth : Int
     }
 
 
@@ -30,7 +34,9 @@ type Modifier
 
 
 type Msg
-    = Update Action Modifier
+    = GetViewport Browser.Dom.Viewport
+    | UpdateViewport Int Int
+    | Update Action Modifier
 
 
 
@@ -43,7 +49,7 @@ main =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { playerX = 0, playerY = 0 }, Cmd.none )
+    ( { playerX = 0, playerY = 0, viewportHeight = 0, viewportWidth = 0 }, Task.perform GetViewport Browser.Dom.getViewport )
 
 
 
@@ -53,6 +59,12 @@ init _ =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GetViewport viewport ->
+            ( { model | viewportHeight = round viewport.viewport.height, viewportWidth = round viewport.viewport.width }, Cmd.none )
+
+        UpdateViewport innerHeight innerWidth ->
+            ( { model | viewportHeight = innerHeight, viewportWidth = innerWidth }, Cmd.none )
+
         Update key modifier ->
             updateKey key modifier model
 
@@ -75,13 +87,13 @@ updateKey key modifier model =
             ( Debug.log "model" { model | playerY = Basics.max (model.playerY - offset) 0 }, Cmd.none )
 
         Down ->
-            ( Debug.log "model" { model | playerY = model.playerY + offset }, Cmd.none )
+            ( Debug.log "model" { model | playerY = Basics.min (model.playerY + offset) (model.viewportHeight - playerHeight) }, Cmd.none )
 
         Left ->
             ( Debug.log "model" { model | playerX = Basics.max (model.playerX - offset) 0 }, Cmd.none )
 
         Right ->
-            ( Debug.log "model" { model | playerX = model.playerX + offset }, Cmd.none )
+            ( Debug.log "model" { model | playerX = Basics.min (model.playerX + offset) (model.viewportWidth - playerWidth) }, Cmd.none )
 
         Other ->
             ( model, Cmd.none )
@@ -93,7 +105,10 @@ updateKey key modifier model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    keyboardSubscription
+    Sub.batch
+        [ keyboardSubscription
+        , viewportSubscription
+        ]
 
 
 
@@ -156,14 +171,32 @@ keyboardSubscription =
 -- GRAPHICS
 
 
+viewportSubscription : Sub Msg
+viewportSubscription =
+    Browser.Events.onResize updateViewport
+
+
+updateViewport : Int -> Int -> Msg
+updateViewport innerWidth innerHeight =
+    UpdateViewport innerHeight innerWidth
+
+
+playerHeight =
+    100
+
+
+playerWidth =
+    50
+
+
 player : Int -> Int -> Html Msg
 player x y =
     let
-        playerHeight =
-            "100"
+        playerHeightStr =
+            String.fromInt playerHeight
 
-        playerWidth =
-            "50"
+        playerWidthStr =
+            String.fromInt playerWidth
     in
     div
         [ Html.Attributes.style "position" "absolute"
@@ -171,14 +204,14 @@ player x y =
         , Html.Attributes.style "top" (coordinateToPixels y)
         ]
         [ svg
-            [ width playerWidth
-            , height playerHeight
-            , viewBox ("0 0" ++ " " ++ playerWidth ++ " " ++ playerHeight)
+            [ width playerWidthStr
+            , height playerHeightStr
+            , viewBox ("0 0" ++ " " ++ playerWidthStr ++ " " ++ playerHeightStr)
             ]
             [ rect
                 [ fill "blue"
-                , width playerWidth
-                , height playerHeight
+                , width playerWidthStr
+                , height playerHeightStr
                 ]
                 []
             ]
