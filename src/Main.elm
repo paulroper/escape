@@ -16,6 +16,7 @@ import Time
 type alias Model =
     { goalX : Int
     , goalY : Int
+    , hiScore : Int
     , playerHeading : Action
     , playerX : Int
     , playerY : Int
@@ -66,19 +67,29 @@ main =
         }
 
 
+initialModel hiScore =
+    { goalX = 750
+    , goalY = 350
+    , hiScore = hiScore
+    , playerHeading = Right
+    , playerX = playerWidth // 2
+    , playerY = playerHeight // 2
+    , score = 0
+    , state = Playing
+    , viewportHeight = 0
+    , viewportWidth = 0
+    }
+
+
+initialTask : () -> Cmd Msg
+initialTask _ =
+    Task.perform GetViewport Browser.Dom.getViewport
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { goalX = 750
-      , goalY = 350
-      , playerHeading = Right
-      , playerX = playerWidth // 2
-      , playerY = playerHeight // 2
-      , score = 0
-      , state = Playing
-      , viewportHeight = 0
-      , viewportWidth = 0
-      }
-    , Task.perform GetViewport Browser.Dom.getViewport
+    ( initialModel 0
+    , initialTask ()
     )
 
 
@@ -101,7 +112,7 @@ update msg model =
             ( model, Cmd.none )
 
         Restart ->
-            init ()
+            ( initialModel <| Basics.max model.score model.hiScore, initialTask () )
 
         UpdateTick score ->
             ( { model | score = model.score + score, state = getState model }, Cmd.none )
@@ -219,7 +230,7 @@ updateSubscription state =
 view : Model -> Html Msg
 view model =
     div []
-        [ scoreboard model.score
+        [ scoreboard model.score model.hiScore
         , div
             [ Html.Attributes.style "position" "relative" ]
             [ completeMessage model.state
@@ -366,15 +377,16 @@ goal x y =
         []
 
 
-scoreboard : Int -> Html Msg
-scoreboard score =
+scoreboard : Int -> Int -> Html Msg
+scoreboard score hiScore =
     div
         [ Html.Attributes.style "width" "100%"
         , Html.Attributes.style "height" (numberToPixels scoreboardHeight)
         , Html.Attributes.style "text-align" "center"
         , Html.Attributes.style "font-family" "sans-serif"
         ]
-        [ Html.text ("Score" ++ " " ++ String.fromInt score)
+        [ div [] [ Html.text ("Score:" ++ " " ++ String.fromInt score) ]
+        , div [] [ Html.text ("Hi-Score:" ++ " " ++ String.fromInt hiScore) ]
         ]
 
 
