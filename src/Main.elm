@@ -10,12 +10,17 @@ import Json.Decode as Decode
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Task
+import Time
 
 
 type alias Model =
-    { playerHeading : Action
+    { goalX : Int
+    , goalY : Int
+    , playerHeading : Action
     , playerX : Int
     , playerY : Int
+    , score : Int
+    , state : GameState
     , viewportHeight : Int
     , viewportWidth : Int
     }
@@ -29,6 +34,11 @@ type Action
     | Other
 
 
+type GameState
+    = Playing
+    | Complete
+
+
 type Modifier
     = Normal
     | Fast
@@ -38,6 +48,7 @@ type Msg
     = GetViewport Browser.Dom.Viewport
     | UpdateViewport Int Int
     | Update Action Modifier
+    | UpdateScore Int
 
 
 
@@ -55,9 +66,13 @@ main =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { playerHeading = Right
-      , playerX = 0
-      , playerY = 0
+    ( { goalX = 750
+      , goalY = 350
+      , playerHeading = Right
+      , playerX = playerWidth // 2
+      , playerY = playerHeight // 2
+      , score = 0
+      , state = Playing
       , viewportHeight = 0
       , viewportWidth = 0
       }
@@ -79,6 +94,9 @@ update msg model =
               }
             , Cmd.none
             )
+
+        UpdateScore score ->
+            ( { model | score = model.score + score, state = getState model }, Cmd.none )
 
         UpdateViewport innerHeight innerWidth ->
             ( { model
@@ -110,7 +128,7 @@ updateKey key modifier model =
             ( Debug.log "model"
                 { model
                     | playerHeading = Up
-                    , playerY = Basics.max (model.playerY - offset) 0
+                    , playerY = Basics.max (model.playerY - offset) (playerHeight // 2)
                 }
             , Cmd.none
             )
@@ -128,7 +146,7 @@ updateKey key modifier model =
             ( Debug.log "model"
                 { model
                     | playerHeading = Left
-                    , playerX = Basics.max (model.playerX - offset) 0
+                    , playerX = Basics.max (model.playerX - offset) moveDistance
                 }
             , Cmd.none
             )
@@ -137,7 +155,7 @@ updateKey key modifier model =
             ( Debug.log "model"
                 { model
                     | playerHeading = Right
-                    , playerX = Basics.min (model.playerX + offset) (model.viewportWidth - playerWidth)
+                    , playerX = Basics.min (model.playerX + offset) (model.viewportWidth - (playerWidth // 2))
                 }
             , Cmd.none
             )
@@ -146,16 +164,44 @@ updateKey key modifier model =
             ( model, Cmd.none )
 
 
+getState : Model -> GameState
+getState model =
+    if inGoal model then
+        Complete
+
+    else
+        Playing
+
+
+inGoal : Model -> Bool
+inGoal model =
+    if (model.playerX >= model.goalX && model.playerX <= (model.goalX + goalWidth)) && (model.playerY >= model.goalY && model.playerY <= (model.goalY + goalHeight)) then
+        True
+
+    else
+        False
+
+
 
 -- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions model =
     Sub.batch
-        [ keyboardSubscription
+        [ keyboardSubscription model.state
+        , scoreSubscription model.state
         , viewportSubscription
         ]
+
+
+scoreSubscription : GameState -> Sub Msg
+scoreSubscription state =
+    if state == Complete then
+        Sub.none
+
+    else
+        Time.every 16 (\_ -> UpdateScore 100)
 
 
 
@@ -165,7 +211,13 @@ subscriptions _ =
 view : Model -> Html Msg
 view model =
     div []
-        [ player model.playerHeading model.playerX model.playerY
+        [ scoreboard model.score
+        , div
+            [ Html.Attributes.style "position" "relative" ]
+            [ completeMessage model.state
+            , player model.playerHeading model.playerX model.playerY
+            , goal model.goalX model.goalY
+            ]
         ]
 
 
@@ -209,9 +261,13 @@ keyToAction key =
             Update Other Normal
 
 
-keyboardSubscription : Sub Msg
-keyboardSubscription =
-    Browser.Events.onKeyPress keyboardDecoder
+keyboardSubscription : GameState -> Sub Msg
+keyboardSubscription state =
+    if state == Complete then
+        Sub.none
+
+    else
+        Browser.Events.onKeyPress keyboardDecoder
 
 
 
@@ -228,12 +284,69 @@ updateViewport innerWidth innerHeight =
     UpdateViewport innerHeight innerWidth
 
 
+goalHeight =
+    150
+
+
+goalWidth =
+    150
+
+
+goalArea =
+    goalHeight * goalWidth
+
+
 playerHeight =
     100
 
 
 playerWidth =
     50
+
+
+scoreboardHeight =
+    50
+
+
+completeMessage : GameState -> Html Msg
+completeMessage state =
+    if state == Complete then
+        div
+            [ Html.Attributes.style "text-align" "center"
+            , Html.Attributes.style "font-family" "sans-serif"
+            , Html.Attributes.style "font-size" "32px"
+            , Html.Attributes.style "color" "green"
+            ]
+            [ Html.text "Winner!" ]
+
+    else
+        Html.text ""
+
+
+goal : Int -> Int -> Html Msg
+goal x y =
+    div
+        [ Html.Attributes.style "width" (numberToPixels goalWidth)
+        , Html.Attributes.style "height" (numberToPixels goalHeight)
+        , Html.Attributes.style "background-color" "green"
+        , Html.Attributes.style "position" "absolute"
+        , Html.Attributes.style "left" (numberToPixels x)
+        , Html.Attributes.style "top" (numberToPixels y)
+        , Html.Attributes.style "z-index" "-1"
+        ]
+        []
+
+
+scoreboard : Int -> Html Msg
+scoreboard score =
+    div
+        [ Html.Attributes.style "width" "100%"
+        , Html.Attributes.style "height" (numberToPixels scoreboardHeight)
+        , Html.Attributes.style "text-align" "center"
+        , Html.Attributes.style "font-family" "sans-serif"
+        ]
+        [ Html.text ("Score" ++ " " ++ String.fromInt score)
+        ]
 
 
 player : Action -> Int -> Int -> Html Msg
@@ -247,8 +360,9 @@ player heading x y =
     in
     div
         [ Html.Attributes.style "position" "absolute"
-        , Html.Attributes.style "left" (coordinateToPixels x)
-        , Html.Attributes.style "top" (coordinateToPixels y)
+        , Html.Attributes.style "left" (numberToPixels x)
+        , Html.Attributes.style "top" (numberToPixels y)
+        , Html.Attributes.style "transform" "translate(-50%,-50%)"
         ]
         [ svg
             [ width playerWidthStr
@@ -304,6 +418,6 @@ chevron heading =
             icon (playerWidth // 2 - (iconWidth // 2)) (playerHeight // 2 - (iconHeight // 2)) ""
 
 
-coordinateToPixels : Int -> String
-coordinateToPixels coordinate =
+numberToPixels : Int -> String
+numberToPixels coordinate =
     String.fromInt coordinate ++ "px"
