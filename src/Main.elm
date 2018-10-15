@@ -127,7 +127,7 @@ update msg model =
             ( { model | goalX = Tuple.first points, goalY = Tuple.second points }, Cmd.none )
 
         UpdateTick score ->
-            ( { model | score = model.score - score, state = getState model }, Cmd.none )
+            ( { model | score = Basics.max (model.score - score) 0, state = getState model }, Cmd.none )
 
         UpdateViewport innerHeight innerWidth ->
             ( { model
