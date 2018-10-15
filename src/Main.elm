@@ -39,6 +39,12 @@ type alias Enemies =
     List Enemy
 
 
+type alias Delta =
+    { enemies : Enemies
+    , score : Int
+    }
+
+
 type Action
     = Up
     | Down
@@ -64,7 +70,7 @@ type Msg
     | UpdateEnemies Enemies
     | UpdateGoal ( Int, Int )
     | UpdateInput Action Modifier
-    | UpdateTick Int
+    | Tick Delta
     | UpdateViewport Int Int
 
 
@@ -139,14 +145,20 @@ update msg model =
         Restart ->
             ( initialModel <| Basics.max model.score model.hiScore, initialTask () )
 
+        Tick dt ->
+            ( { model
+                | enemies = dt.enemies
+                , score = Basics.max (model.score - dt.score) 0
+                , state = getState model
+              }
+            , Cmd.none
+            )
+
         UpdateEnemies nmes ->
             ( { model | enemies = nmes }, Cmd.none )
 
         UpdateGoal points ->
             ( { model | goalX = Tuple.first points, goalY = Tuple.second points }, Cmd.none )
-
-        UpdateTick score ->
-            ( { model | score = Basics.max (model.score - score) 0, state = getState model }, Cmd.none )
 
         UpdateViewport innerHeight innerWidth ->
             ( { model
@@ -265,18 +277,39 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ keyboardSubscription model.state
-        , updateSubscription model.state
+        , updateSubscription model
         , viewportSubscription
         ]
 
 
-updateSubscription : GameState -> Sub Msg
-updateSubscription state =
-    if state == Complete then
+updateSubscription : Model -> Sub Msg
+updateSubscription model =
+    if model.state == Complete then
         Sub.none
 
     else
-        Time.every 16 (\_ -> UpdateTick 100)
+        Time.every 16 (\_ -> Tick (getDelta model))
+
+
+getDelta : Model -> Delta
+getDelta model =
+    { enemies = List.map (updateEnemyPosition model.playerX model.playerY) model.enemies
+    , score = 100
+    }
+
+
+updateEnemyPosition : Int -> Int -> Enemy -> Enemy
+updateEnemyPosition playerX playerY nme =
+    { x = findPlayer playerX nme.x, y = findPlayer playerY nme.y }
+
+
+findPlayer : Int -> Int -> Int
+findPlayer playerCoordinate enemyCoordinate =
+    if enemyCoordinate - playerCoordinate >= 0 then
+        enemyCoordinate - 3
+
+    else
+        enemyCoordinate + 3
 
 
 
