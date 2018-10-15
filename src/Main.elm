@@ -355,7 +355,9 @@ scoreboardHeight =
 completeMessage : GameState -> Html Msg
 completeMessage state =
     if state == Complete then
-        div []
+        div
+            [ Html.Attributes.style "padding-top" "50px"
+            ]
             [ div
                 [ Html.Attributes.style "text-align" "center"
                 , Html.Attributes.style "font-family" "sans-serif"
