@@ -404,13 +404,6 @@ scoreboard score hiScore =
 
 player : Action -> Int -> Int -> Html Msg
 player heading x y =
-    let
-        playerHeightStr =
-            String.fromInt playerHeight
-
-        playerWidthStr =
-            String.fromInt playerWidth
-    in
     div
         [ Html.Attributes.style "position" "absolute"
         , Html.Attributes.style "left" (numberToPixels x)
@@ -418,13 +411,13 @@ player heading x y =
         , Html.Attributes.style "transform" "translate(-50%,-50%)"
         ]
         [ svg
-            [ width playerWidthStr
-            , height playerHeightStr
+            [ width <| numberToPixels playerWidth
+            , height <| numberToPixels playerHeight
             ]
             [ rect
                 [ fill "blue"
-                , width playerWidthStr
-                , height playerHeightStr
+                , width <| numberToPixels playerWidth
+                , height <| numberToPixels playerHeight
                 ]
                 []
             , chevron heading
