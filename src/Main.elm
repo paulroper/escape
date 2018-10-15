@@ -7,6 +7,7 @@ import Html exposing (Html, button, div, text)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
+import Random
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Task
@@ -49,9 +50,10 @@ type Msg
     = GetViewport Browser.Dom.Viewport
     | Nothing
     | Restart
-    | UpdateViewport Int Int
+    | UpdateGoal ( Int, Int )
     | UpdateInput Action Modifier
     | UpdateTick Int
+    | UpdateViewport Int Int
 
 
 
@@ -68,8 +70,8 @@ main =
 
 
 initialModel hiScore =
-    { goalX = 750
-    , goalY = 350
+    { goalX = 0
+    , goalY = 0
     , hiScore = hiScore
     , playerHeading = Right
     , playerX = playerWidth // 2
@@ -101,11 +103,18 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         GetViewport viewport ->
+            let
+                viewportHeight =
+                    round viewport.viewport.height
+
+                viewportWidth =
+                    round viewport.viewport.width
+            in
             ( { model
-                | viewportHeight = round viewport.viewport.height
-                , viewportWidth = round viewport.viewport.width
+                | viewportHeight = viewportHeight
+                , viewportWidth = viewportWidth
               }
-            , Cmd.none
+            , Random.generate UpdateGoal (Random.pair (Random.int 0 (viewportWidth - goalWidth)) (Random.int 0 (viewportHeight - goalHeight)))
             )
 
         Nothing ->
@@ -113,6 +122,9 @@ update msg model =
 
         Restart ->
             ( initialModel <| Basics.max model.score model.hiScore, initialTask () )
+
+        UpdateGoal points ->
+            ( { model | goalX = Tuple.first points, goalY = Tuple.second points }, Cmd.none )
 
         UpdateTick score ->
             ( { model | score = model.score + score, state = getState model }, Cmd.none )
