@@ -307,7 +307,11 @@ updateEnemyPosition playerX playerY nme =
 
 findPlayer : Int -> Int -> Int -> Int
 findPlayer playerCoordinate enemyCoordinate enemySpeed =
-    if enemyCoordinate - playerCoordinate >= 0 then
+    -- Add tolerance for where enemy is on same horizontal / vertical line as player to stop janky animation
+    if Basics.abs (enemyCoordinate - playerCoordinate) <= enemySpeed then
+        playerCoordinate
+
+    else if enemyCoordinate - playerCoordinate > 0 then
         enemyCoordinate - enemySpeed
 
     else
