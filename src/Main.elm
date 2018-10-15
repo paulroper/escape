@@ -46,6 +46,8 @@ type Modifier
 
 type Msg
     = GetViewport Browser.Dom.Viewport
+    | Nothing
+    | Restart
     | UpdateViewport Int Int
     | Update Action Modifier
     | UpdateScore Int
@@ -94,6 +96,12 @@ update msg model =
               }
             , Cmd.none
             )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+        Restart ->
+            init ()
 
         UpdateScore score ->
             ( { model | score = model.score + score, state = getState model }, Cmd.none )
@@ -230,6 +238,19 @@ keyboardDecoder =
     Decode.map keyToAction (Decode.field "key" Decode.string)
 
 
+restartDecoder : Decode.Decoder Msg
+restartDecoder =
+    Decode.map
+        (\key ->
+            if key == "r" then
+                Restart
+
+            else
+                Nothing
+        )
+        (Decode.field "key" Decode.string)
+
+
 keyToAction : String -> Msg
 keyToAction key =
     case key of
@@ -264,7 +285,7 @@ keyToAction key =
 keyboardSubscription : GameState -> Sub Msg
 keyboardSubscription state =
     if state == Complete then
-        Sub.none
+        Browser.Events.onKeyPress restartDecoder
 
     else
         Browser.Events.onKeyPress keyboardDecoder
@@ -311,13 +332,21 @@ scoreboardHeight =
 completeMessage : GameState -> Html Msg
 completeMessage state =
     if state == Complete then
-        div
-            [ Html.Attributes.style "text-align" "center"
-            , Html.Attributes.style "font-family" "sans-serif"
-            , Html.Attributes.style "font-size" "32px"
-            , Html.Attributes.style "color" "green"
+        div []
+            [ div
+                [ Html.Attributes.style "text-align" "center"
+                , Html.Attributes.style "font-family" "sans-serif"
+                , Html.Attributes.style "font-size" "32px"
+                , Html.Attributes.style "color" "green"
+                ]
+                [ Html.text "Winner!" ]
+            , div
+                [ Html.Attributes.style "text-align" "center"
+                , Html.Attributes.style "font-family" "sans-serif"
+                , Html.Attributes.style "font-size" "16px"
+                ]
+                [ Html.text "Press r to restart" ]
             ]
-            [ Html.text "Winner!" ]
 
     else
         Html.text ""
