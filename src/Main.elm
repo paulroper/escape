@@ -15,7 +15,8 @@ import Time
 
 
 type alias Model =
-    { goalX : Int
+    { enemies : Enemies
+    , goalX : Int
     , goalY : Int
     , hiScore : Int
     , playerHeading : Action
@@ -26,6 +27,16 @@ type alias Model =
     , viewportHeight : Int
     , viewportWidth : Int
     }
+
+
+type alias Enemy =
+    { x : Int
+    , y : Int
+    }
+
+
+type alias Enemies =
+    List Enemy
 
 
 type Action
@@ -50,6 +61,7 @@ type Msg
     = GetViewport Browser.Dom.Viewport
     | Nothing
     | Restart
+    | UpdateEnemies Enemies
     | UpdateGoal ( Int, Int )
     | UpdateInput Action Modifier
     | UpdateTick Int
@@ -70,7 +82,8 @@ main =
 
 
 initialModel hiScore =
-    { goalX = -999
+    { enemies = []
+    , goalX = -999
     , goalY = -999
     , hiScore = hiScore
     , playerHeading = Right
@@ -114,7 +127,10 @@ update msg model =
                 | viewportHeight = viewportHeight
                 , viewportWidth = viewportWidth
               }
-            , Random.generate UpdateGoal (Random.pair (Random.int 0 (viewportWidth - goalWidth)) (Random.int 0 (viewportHeight - goalHeight)))
+            , Cmd.batch
+                [ Random.generate UpdateGoal (generateGoal (viewportWidth - goalWidth) (viewportHeight - goalHeight))
+                , Random.generate UpdateEnemies (generateEnemies (viewportWidth - enemyWidth) (viewportHeight - enemyHeight))
+                ]
             )
 
         Nothing ->
@@ -122,6 +138,9 @@ update msg model =
 
         Restart ->
             ( initialModel <| Basics.max model.score model.hiScore, initialTask () )
+
+        UpdateEnemies nmes ->
+            ( { model | enemies = nmes }, Cmd.none )
 
         UpdateGoal points ->
             ( { model | goalX = Tuple.first points, goalY = Tuple.second points }, Cmd.none )
@@ -206,11 +225,36 @@ getState model =
 
 inGoal : Model -> Bool
 inGoal model =
-    if (model.playerX >= model.goalX && model.playerX <= (model.goalX + goalWidth)) && (model.playerY >= model.goalY && model.playerY <= (model.goalY + goalHeight)) then
+    if
+        (model.playerX >= model.goalX && model.playerX <= (model.goalX + goalWidth))
+            && (model.playerY >= model.goalY && model.playerY <= (model.goalY + goalHeight))
+    then
         True
 
     else
         False
+
+
+generateGoal : Int -> Int -> Random.Generator ( Int, Int )
+generateGoal xBound yBound =
+    Random.pair
+        (Random.int 0 xBound)
+        (Random.int 0 yBound)
+
+
+generateEnemies : Int -> Int -> Random.Generator Enemies
+generateEnemies xBound yBound =
+    Random.int 2 4
+        |> Random.andThen
+            (\num -> Random.list num (generateEnemy xBound yBound))
+
+
+generateEnemy : Int -> Int -> Random.Generator Enemy
+generateEnemy xBound yBound =
+    Random.map2
+        (\x y -> { x = x, y = y })
+        (Random.int 0 xBound)
+        (Random.int 0 yBound)
 
 
 
@@ -245,10 +289,12 @@ view model =
         [ scoreboard model.score model.hiScore
         , div
             [ Html.Attributes.style "position" "relative" ]
-            [ completeMessage model.state
-            , player model.playerHeading model.playerX model.playerY
-            , goal model.goalX model.goalY
-            ]
+            ([ completeMessage model.state
+             , player model.playerHeading model.playerX model.playerY
+             , goal model.goalX model.goalY
+             ]
+                ++ enemies model.enemies
+            )
         ]
 
 
@@ -328,6 +374,14 @@ updateViewport innerWidth innerHeight =
     UpdateViewport innerHeight innerWidth
 
 
+enemyHeight =
+    25
+
+
+enemyWidth =
+    25
+
+
 goalHeight =
     150
 
@@ -401,6 +455,35 @@ scoreboard score hiScore =
         ]
         [ div [] [ Html.text ("Score:" ++ " " ++ String.fromInt score) ]
         , div [] [ Html.text ("Hi-Score:" ++ " " ++ String.fromInt hiScore) ]
+        ]
+
+
+enemies : Enemies -> List (Html Msg)
+enemies nmes =
+    List.map enemy nmes
+
+
+enemy : Enemy -> Html Msg
+enemy nme =
+    div
+        [ Html.Attributes.style "position" "absolute"
+        , Html.Attributes.style "left" (numberToPixels nme.x)
+        , Html.Attributes.style "top" (numberToPixels nme.y)
+        , Html.Attributes.style "transform" "translate(-50%,-50%)"
+        , Html.Attributes.style "z-index" "1"
+        ]
+        [ svg
+            [ width <| numberToPixels enemyWidth
+            , height <| numberToPixels enemyHeight
+            ]
+            [ circle
+                [ fill "red"
+                , cx <| numberToPixels (enemyWidth // 2)
+                , cy <| numberToPixels (enemyHeight // 2)
+                , r <| numberToPixels (enemyWidth // 2)
+                ]
+                []
+            ]
         ]
 
 
