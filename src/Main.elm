@@ -32,6 +32,7 @@ type alias Model =
 type alias Enemy =
     { x : Int
     , y : Int
+    , speed : Int
     }
 
 
@@ -263,10 +264,11 @@ generateEnemies xBound yBound =
 
 generateEnemy : Int -> Int -> Random.Generator Enemy
 generateEnemy xBound yBound =
-    Random.map2
-        (\x y -> { x = x, y = y })
+    Random.map3
+        (\x y speed -> { speed = speed, x = x, y = y })
         (Random.int 0 xBound)
         (Random.int 0 yBound)
+        (Random.int 2 5)
 
 
 
@@ -300,16 +302,16 @@ getDelta model =
 
 updateEnemyPosition : Int -> Int -> Enemy -> Enemy
 updateEnemyPosition playerX playerY nme =
-    { x = findPlayer playerX nme.x, y = findPlayer playerY nme.y }
+    { nme | x = findPlayer playerX nme.x nme.speed, y = findPlayer playerY nme.y nme.speed }
 
 
-findPlayer : Int -> Int -> Int
-findPlayer playerCoordinate enemyCoordinate =
+findPlayer : Int -> Int -> Int -> Int
+findPlayer playerCoordinate enemyCoordinate enemySpeed =
     if enemyCoordinate - playerCoordinate >= 0 then
-        enemyCoordinate - 3
+        enemyCoordinate - enemySpeed
 
     else
-        enemyCoordinate + 3
+        enemyCoordinate + enemySpeed
 
 
 
