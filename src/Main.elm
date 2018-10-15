@@ -76,7 +76,7 @@ initialModel hiScore =
     , playerHeading = Right
     , playerX = playerWidth // 2
     , playerY = playerHeight // 2
-    , score = 0
+    , score = 100000
     , state = Playing
     , viewportHeight = 0
     , viewportWidth = 0
@@ -127,7 +127,7 @@ update msg model =
             ( { model | goalX = Tuple.first points, goalY = Tuple.second points }, Cmd.none )
 
         UpdateTick score ->
-            ( { model | score = model.score + score, state = getState model }, Cmd.none )
+            ( { model | score = model.score - score, state = getState model }, Cmd.none )
 
         UpdateViewport innerHeight innerWidth ->
             ( { model
