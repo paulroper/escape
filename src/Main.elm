@@ -49,8 +49,8 @@ type Msg
     | Nothing
     | Restart
     | UpdateViewport Int Int
-    | Update Action Modifier
-    | UpdateScore Int
+    | UpdateInput Action Modifier
+    | UpdateTick Int
 
 
 
@@ -103,7 +103,7 @@ update msg model =
         Restart ->
             init ()
 
-        UpdateScore score ->
+        UpdateTick score ->
             ( { model | score = model.score + score, state = getState model }, Cmd.none )
 
         UpdateViewport innerHeight innerWidth ->
@@ -114,7 +114,7 @@ update msg model =
             , Cmd.none
             )
 
-        Update key modifier ->
+        UpdateInput key modifier ->
             updateKey key modifier model
 
 
@@ -198,18 +198,18 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ keyboardSubscription model.state
-        , scoreSubscription model.state
+        , updateSubscription model.state
         , viewportSubscription
         ]
 
 
-scoreSubscription : GameState -> Sub Msg
-scoreSubscription state =
+updateSubscription : GameState -> Sub Msg
+updateSubscription state =
     if state == Complete then
         Sub.none
 
     else
-        Time.every 16 (\_ -> UpdateScore 100)
+        Time.every 16 (\_ -> UpdateTick 100)
 
 
 
@@ -255,31 +255,31 @@ keyToAction : String -> Msg
 keyToAction key =
     case key of
         "W" ->
-            Update Up Fast
+            UpdateInput Up Fast
 
         "S" ->
-            Update Down Fast
+            UpdateInput Down Fast
 
         "A" ->
-            Update Left Fast
+            UpdateInput Left Fast
 
         "D" ->
-            Update Right Fast
+            UpdateInput Right Fast
 
         "w" ->
-            Update Up Normal
+            UpdateInput Up Normal
 
         "s" ->
-            Update Down Normal
+            UpdateInput Down Normal
 
         "a" ->
-            Update Left Normal
+            UpdateInput Left Normal
 
         "d" ->
-            Update Right Normal
+            UpdateInput Right Normal
 
         _ ->
-            Update Other Normal
+            Nothing
 
 
 keyboardSubscription : GameState -> Sub Msg
