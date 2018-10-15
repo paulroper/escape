@@ -57,6 +57,7 @@ type Action
 type GameState
     = Playing
     | Complete
+    | GameOver
 
 
 type Modifier
@@ -232,6 +233,9 @@ getState model =
     if inGoal model then
         Complete
 
+    else if collision model then
+        GameOver
+
     else
         Playing
 
@@ -246,6 +250,16 @@ inGoal model =
 
     else
         False
+
+
+collision : Model -> Bool
+collision model =
+    List.any (enemyCollision model.playerX model.playerY) model.enemies
+
+
+enemyCollision : Int -> Int -> Enemy -> Bool
+enemyCollision playerX playerY nme =
+    nme.x == playerX && nme.y == playerY
 
 
 generateGoal : Int -> Int -> Random.Generator ( Int, Int )
@@ -286,11 +300,11 @@ subscriptions model =
 
 updateSubscription : Model -> Sub Msg
 updateSubscription model =
-    if model.state == Complete then
-        Sub.none
+    if model.state == Playing then
+        Time.every 16 (\_ -> Tick (getDelta model))
 
     else
-        Time.every 16 (\_ -> Tick (getDelta model))
+        Sub.none
 
 
 getDelta : Model -> Delta
@@ -328,7 +342,7 @@ view model =
         [ scoreboard model.score model.hiScore
         , div
             [ Html.Attributes.style "position" "relative" ]
-            ([ completeMessage model.state
+            ([ message model.state
              , player model.playerHeading model.playerX model.playerY
              , goal model.goalX model.goalY
              ]
@@ -392,11 +406,11 @@ keyToAction key =
 
 keyboardSubscription : GameState -> Sub Msg
 keyboardSubscription state =
-    if state == Complete then
-        Browser.Events.onKeyPress restartDecoder
+    if state == Playing then
+        Browser.Events.onKeyPress keyboardDecoder
 
     else
-        Browser.Events.onKeyPress keyboardDecoder
+        Browser.Events.onKeyPress restartDecoder
 
 
 
@@ -445,8 +459,8 @@ scoreboardHeight =
     50
 
 
-completeMessage : GameState -> Html Msg
-completeMessage state =
+message : GameState -> Html Msg
+message state =
     if state == Complete then
         div
             [ Html.Attributes.style "padding-top" "50px"
@@ -458,6 +472,25 @@ completeMessage state =
                 , Html.Attributes.style "color" "green"
                 ]
                 [ Html.text "Winner!" ]
+            , div
+                [ Html.Attributes.style "text-align" "center"
+                , Html.Attributes.style "font-family" "sans-serif"
+                , Html.Attributes.style "font-size" "16px"
+                ]
+                [ Html.text "Press r to restart" ]
+            ]
+
+    else if state == GameOver then
+        div
+            [ Html.Attributes.style "padding-top" "50px"
+            ]
+            [ div
+                [ Html.Attributes.style "text-align" "center"
+                , Html.Attributes.style "font-family" "sans-serif"
+                , Html.Attributes.style "font-size" "32px"
+                , Html.Attributes.style "color" "red"
+                ]
+                [ Html.text "Game Over!" ]
             , div
                 [ Html.Attributes.style "text-align" "center"
                 , Html.Attributes.style "font-family" "sans-serif"
