@@ -70,8 +70,8 @@ main =
 
 
 initialModel hiScore =
-    { goalX = 0
-    , goalY = 0
+    { goalX = -999
+    , goalY = -999
     , hiScore = hiScore
     , playerHeading = Right
     , playerX = playerWidth // 2
