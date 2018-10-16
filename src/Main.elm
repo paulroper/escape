@@ -20,9 +20,7 @@ type alias Model =
     , goalY : Int
     , hiScore : Int
     , inputQueue : ( Action, Modifier )
-    , playerHeading : Action
-    , playerX : Int
-    , playerY : Int
+    , player : Player
     , score : Int
     , state : GameState
     , viewportHeight : Int
@@ -34,6 +32,13 @@ type alias Enemy =
     { x : Int
     , y : Int
     , speed : Int
+    }
+
+
+type alias Player =
+    { x : Int
+    , y : Int
+    , heading : Action
     }
 
 
@@ -71,13 +76,6 @@ type Msg
     | UpdateViewport Int Int
 
 
-type alias PlayerUpdate =
-    { heading : Action
-    , x : Int
-    , y : Int
-    }
-
-
 
 -- INIT
 
@@ -97,9 +95,11 @@ initialModel hiScore =
     , goalY = -999
     , hiScore = hiScore
     , inputQueue = ( Other, Normal )
-    , playerHeading = Right
-    , playerX = playerWidth // 2
-    , playerY = playerHeight // 2
+    , player =
+        { heading = Right
+        , x = playerWidth // 2
+        , y = playerHeight // 2
+        }
     , score = 100000
     , state = Playing
     , viewportHeight = 0
@@ -153,14 +153,12 @@ update msg model =
         Tick dt ->
             let
                 playerUpdate =
-                    updatePlayerPosition model
+                    updatePlayer model
             in
             ( { model
-                | enemies = List.map (updateEnemyPosition model.playerX model.playerY) model.enemies
+                | enemies = List.map (updateEnemyPosition model.player.x model.player.y) model.enemies
                 , inputQueue = ( Other, Normal )
-                , playerHeading = playerUpdate.heading
-                , playerX = playerUpdate.x
-                , playerY = playerUpdate.y
+                , player = updatePlayer model
                 , score = Basics.max (model.score - 100) 0
                 , state = getState model
               }
@@ -205,8 +203,8 @@ getState model =
 inGoal : Model -> Bool
 inGoal model =
     if
-        (model.playerX >= model.goalX && model.playerX <= (model.goalX + goalWidth))
-            && (model.playerY >= model.goalY && model.playerY <= (model.goalY + goalHeight))
+        (model.player.x >= model.goalX && model.player.x <= (model.goalX + goalWidth))
+            && (model.player.y >= model.goalY && model.player.y <= (model.goalY + goalHeight))
     then
         True
 
@@ -216,7 +214,7 @@ inGoal model =
 
 collision : Model -> Bool
 collision model =
-    List.any (enemyCollision model.playerX model.playerY) model.enemies
+    List.any (enemyCollision model.player.x model.player.y) model.enemies
 
 
 enemyCollision : Int -> Int -> Enemy -> Bool
@@ -247,8 +245,8 @@ generateEnemy xBound yBound =
         (Random.int 2 5)
 
 
-updatePlayerPosition : Model -> PlayerUpdate
-updatePlayerPosition model =
+updatePlayer : Model -> Player
+updatePlayer model =
     let
         action =
             Tuple.first model.inputQueue
@@ -268,19 +266,34 @@ updatePlayerPosition model =
     in
     case action of
         Up ->
-            { heading = Up, x = model.playerX, y = Basics.max (model.playerY - offset) (playerHeight // 2) }
+            { heading = Up
+            , x = model.player.x
+            , y = Basics.max (model.player.y - offset) (playerHeight // 2)
+            }
 
         Down ->
-            { heading = Down, x = model.playerX, y = Basics.min (model.playerY + offset) (model.viewportHeight - playerHeight) }
+            { heading = Down
+            , x = model.player.x
+            , y = Basics.min (model.player.y + offset) (model.viewportHeight - playerHeight)
+            }
 
         Left ->
-            { heading = Left, x = Basics.max (model.playerX - offset) moveDistance, y = model.playerY }
+            { heading = Left
+            , x = Basics.max (model.player.x - offset) moveDistance
+            , y = model.player.y
+            }
 
         Right ->
-            { heading = Right, x = Basics.min (model.playerX + offset) (model.viewportWidth - (playerWidth // 2)), y = model.playerY }
+            { heading = Right
+            , x = Basics.min (model.player.x + offset) (model.viewportWidth - (playerWidth // 2))
+            , y = model.player.y
+            }
 
         _ ->
-            { heading = model.playerHeading, x = model.playerX, y = model.playerY }
+            { heading = model.player.heading
+            , x = model.player.x
+            , y = model.player.y
+            }
 
 
 updateEnemyPosition : Int -> Int -> Enemy -> Enemy
@@ -334,7 +347,7 @@ view model =
         , div
             [ Html.Attributes.style "position" "relative" ]
             ([ message model.state
-             , player model.playerHeading model.playerX model.playerY
+             , player model.player.heading model.player.x model.player.y
              , goal model.goalX model.goalY
              ]
                 ++ enemies model.enemies
