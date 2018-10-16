@@ -1,84 +1,13 @@
-module Main exposing (Msg(..), main, update, view)
+module Main exposing (main)
 
 import Browser
 import Browser.Dom
 import Browser.Events
-import Html exposing (Html, button, div, text)
-import Html.Attributes exposing (style)
-import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import Random
-import Svg exposing (..)
-import Svg.Attributes exposing (..)
 import Task
-import Time
-
-
-type alias Model =
-    { enemies : Enemies
-    , goal : Goal
-    , hiScore : Int
-    , inputQueue : ( Action, Modifier )
-    , player : Player
-    , score : Int
-    , state : GameState
-    , viewportHeight : Int
-    , viewportWidth : Int
-    }
-
-
-type alias Enemy =
-    { x : Int
-    , y : Int
-    , speed : Int
-    }
-
-
-type alias Goal =
-    { x : Int
-    , y : Int
-    }
-
-
-type alias Player =
-    { x : Int
-    , y : Int
-    , heading : Action
-    }
-
-
-type alias Enemies =
-    List Enemy
-
-
-type Action
-    = Up
-    | Down
-    | Left
-    | Right
-    | Other
-
-
-type GameState
-    = Playing
-    | Complete
-    | GameOver
-
-
-type Modifier
-    = Normal
-    | Fast
-
-
-type Msg
-    = GetViewport Browser.Dom.Viewport
-    | Nothing
-    | Restart
-    | UpdateEnemies Enemies
-    | UpdateGoal ( Int, Int )
-    | UpdateInputQueue Action Modifier
-    | Tick Float
-    | UpdateViewport Int Int
+import Types
+import View
 
 
 
@@ -90,7 +19,7 @@ main =
         { init = init
         , subscriptions = subscriptions
         , update = update
-        , view = view
+        , view = View.view
         }
 
 
@@ -98,25 +27,25 @@ initialModel hiScore =
     { enemies = []
     , goal = { x = -999, y = -999 }
     , hiScore = hiScore
-    , inputQueue = ( Other, Normal )
+    , inputQueue = ( Types.Other, Types.Normal )
     , player =
-        { heading = Right
-        , x = playerWidth // 2
-        , y = playerHeight // 2
+        { heading = Types.Right
+        , x = View.playerWidth // 2
+        , y = View.playerHeight // 2
         }
     , score = 100000
-    , state = Playing
+    , state = Types.Playing
     , viewportHeight = 0
     , viewportWidth = 0
     }
 
 
-initialTask : () -> Cmd Msg
+initialTask : () -> Cmd Types.Msg
 initialTask _ =
-    Task.perform GetViewport Browser.Dom.getViewport
+    Task.perform Types.GetViewport Browser.Dom.getViewport
 
 
-init : () -> ( Model, Cmd Msg )
+init : () -> ( Types.Model, Cmd Types.Msg )
 init _ =
     ( initialModel 0
     , initialTask ()
@@ -127,10 +56,10 @@ init _ =
 -- UPDATE
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Types.Msg -> Types.Model -> ( Types.Model, Cmd Types.Msg )
 update msg model =
     case msg of
-        GetViewport viewport ->
+        Types.GetViewport viewport ->
             let
                 viewportHeight =
                     round viewport.viewport.height
@@ -143,25 +72,25 @@ update msg model =
                 , viewportWidth = viewportWidth
               }
             , Cmd.batch
-                [ Random.generate UpdateGoal (generateGoal (viewportWidth - goalWidth) (viewportHeight - goalHeight))
-                , Random.generate UpdateEnemies (generateEnemies (viewportWidth - enemyWidth) (viewportHeight - enemyHeight))
+                [ Random.generate Types.UpdateGoal (generateGoal (viewportWidth - View.goalWidth) (viewportHeight - View.goalHeight))
+                , Random.generate Types.UpdateEnemies (generateEnemies (viewportWidth - View.enemyWidth) (viewportHeight - View.enemyHeight))
                 ]
             )
 
-        Nothing ->
+        Types.Nothing ->
             ( model, Cmd.none )
 
-        Restart ->
+        Types.Restart ->
             ( initialModel <| Basics.max model.score model.hiScore, initialTask () )
 
-        Tick dt ->
+        Types.Tick dt ->
             let
                 playerUpdate =
                     updatePlayer model
             in
             ( { model
                 | enemies = List.map (updateEnemyPosition model.player.x model.player.y) model.enemies
-                , inputQueue = ( Other, Normal )
+                , inputQueue = ( Types.Other, Types.Normal )
                 , player = updatePlayer model
                 , score = Basics.max (model.score - 100) 0
                 , state = getState model
@@ -169,13 +98,13 @@ update msg model =
             , Cmd.none
             )
 
-        UpdateEnemies nmes ->
+        Types.UpdateEnemies nmes ->
             ( { model | enemies = nmes }, Cmd.none )
 
-        UpdateGoal points ->
+        Types.UpdateGoal points ->
             ( { model | goal = { x = Tuple.first points, y = Tuple.second points } }, Cmd.none )
 
-        UpdateViewport innerHeight innerWidth ->
+        Types.UpdateViewport innerHeight innerWidth ->
             ( { model
                 | viewportHeight = innerHeight
                 , viewportWidth = innerWidth
@@ -183,32 +112,32 @@ update msg model =
             , Cmd.none
             )
 
-        UpdateInputQueue key modifier ->
+        Types.UpdateInputQueue key modifier ->
             updateInputQueue key modifier model
 
 
-updateInputQueue : Action -> Modifier -> Model -> ( Model, Cmd Msg )
+updateInputQueue : Types.Action -> Types.Modifier -> Types.Model -> ( Types.Model, Cmd Types.Msg )
 updateInputQueue action modifier model =
     ( { model | inputQueue = ( action, modifier ) }, Cmd.none )
 
 
-getState : Model -> GameState
+getState : Types.Model -> Types.GameState
 getState model =
     if inGoal model then
-        Complete
+        Types.Complete
 
     else if collision model then
-        GameOver
+        Types.GameOver
 
     else
-        Playing
+        Types.Playing
 
 
-inGoal : Model -> Bool
+inGoal : Types.Model -> Bool
 inGoal model =
     if
-        (model.player.x >= model.goal.x && model.player.x <= (model.goal.x + goalWidth))
-            && (model.player.y >= model.goal.y && model.player.y <= (model.goal.y + goalHeight))
+        (model.player.x >= model.goal.x && model.player.x <= (model.goal.x + View.goalWidth))
+            && (model.player.y >= model.goal.y && model.player.y <= (model.goal.y + View.goalHeight))
     then
         True
 
@@ -216,12 +145,12 @@ inGoal model =
         False
 
 
-collision : Model -> Bool
+collision : Types.Model -> Bool
 collision model =
     List.any (enemyCollision model.player.x model.player.y) model.enemies
 
 
-enemyCollision : Int -> Int -> Enemy -> Bool
+enemyCollision : Int -> Int -> Types.Enemy -> Bool
 enemyCollision playerX playerY nme =
     nme.x == playerX && nme.y == playerY
 
@@ -233,14 +162,14 @@ generateGoal xBound yBound =
         (Random.int 0 yBound)
 
 
-generateEnemies : Int -> Int -> Random.Generator Enemies
+generateEnemies : Int -> Int -> Random.Generator Types.Enemies
 generateEnemies xBound yBound =
     Random.int 2 4
         |> Random.andThen
             (\num -> Random.list num (generateEnemy xBound yBound))
 
 
-generateEnemy : Int -> Int -> Random.Generator Enemy
+generateEnemy : Int -> Int -> Random.Generator Types.Enemy
 generateEnemy xBound yBound =
     Random.map3
         (\x y speed -> { speed = speed, x = x, y = y })
@@ -249,7 +178,7 @@ generateEnemy xBound yBound =
         (Random.int 2 5)
 
 
-updatePlayer : Model -> Player
+updatePlayer : Types.Model -> Types.Player
 updatePlayer model =
     let
         action =
@@ -262,34 +191,34 @@ updatePlayer model =
             10
 
         offset =
-            if modifier == Fast then
+            if modifier == Types.Fast then
                 moveDistance * 2
 
             else
                 moveDistance
     in
     case action of
-        Up ->
-            { heading = Up
+        Types.Up ->
+            { heading = Types.Up
             , x = model.player.x
-            , y = Basics.max (model.player.y - offset) (playerHeight // 2)
+            , y = Basics.max (model.player.y - offset) (View.playerHeight // 2)
             }
 
-        Down ->
-            { heading = Down
+        Types.Down ->
+            { heading = Types.Down
             , x = model.player.x
-            , y = Basics.min (model.player.y + offset) (model.viewportHeight - playerHeight)
+            , y = Basics.min (model.player.y + offset) (model.viewportHeight - View.playerHeight)
             }
 
-        Left ->
-            { heading = Left
+        Types.Left ->
+            { heading = Types.Left
             , x = Basics.max (model.player.x - offset) moveDistance
             , y = model.player.y
             }
 
-        Right ->
-            { heading = Right
-            , x = Basics.min (model.player.x + offset) (model.viewportWidth - (playerWidth // 2))
+        Types.Right ->
+            { heading = Types.Right
+            , x = Basics.min (model.player.x + offset) (model.viewportWidth - (View.playerWidth // 2))
             , y = model.player.y
             }
 
@@ -300,7 +229,7 @@ updatePlayer model =
             }
 
 
-updateEnemyPosition : Int -> Int -> Enemy -> Enemy
+updateEnemyPosition : Int -> Int -> Types.Enemy -> Types.Enemy
 updateEnemyPosition playerX playerY nme =
     { nme | x = findPlayer playerX nme.x nme.speed, y = findPlayer playerY nme.y nme.speed }
 
@@ -322,7 +251,7 @@ findPlayer playerCoordinate enemyCoordinate enemySpeed =
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model -> Sub Msg
+subscriptions : Types.Model -> Sub Types.Msg
 subscriptions model =
     Sub.batch
         [ keyboardSubscription model.state
@@ -331,304 +260,73 @@ subscriptions model =
         ]
 
 
-updateSubscription : Model -> Sub Msg
-updateSubscription model =
-    if model.state == Playing then
-        Browser.Events.onAnimationFrameDelta (\dt -> Tick dt)
-
-    else
-        Sub.none
-
-
-
--- VIEW
-
-
-view : Model -> Html Msg
-view model =
-    div []
-        [ scoreboard model.score model.hiScore
-        , div
-            [ Html.Attributes.style "position" "relative" ]
-            ([ message model.state
-             , player model.player.heading model.player.x model.player.y
-             , goal model.goal.x model.goal.y
-             ]
-                ++ enemies model.enemies
-            )
-        ]
-
-
-
--- INPUT
-
-
-keyboardDecoder : Decode.Decoder Msg
-keyboardDecoder =
-    Decode.map keyToAction (Decode.field "key" Decode.string)
-
-
-restartDecoder : Decode.Decoder Msg
-restartDecoder =
-    Decode.map
-        (\key ->
-            if key == "r" then
-                Restart
-
-            else
-                Nothing
-        )
-        (Decode.field "key" Decode.string)
-
-
-keyToAction : String -> Msg
-keyToAction key =
-    case key of
-        "W" ->
-            UpdateInputQueue Up Fast
-
-        "S" ->
-            UpdateInputQueue Down Fast
-
-        "A" ->
-            UpdateInputQueue Left Fast
-
-        "D" ->
-            UpdateInputQueue Right Fast
-
-        "w" ->
-            UpdateInputQueue Up Normal
-
-        "s" ->
-            UpdateInputQueue Down Normal
-
-        "a" ->
-            UpdateInputQueue Left Normal
-
-        "d" ->
-            UpdateInputQueue Right Normal
-
-        _ ->
-            Nothing
-
-
-keyboardSubscription : GameState -> Sub Msg
+keyboardSubscription : Types.GameState -> Sub Types.Msg
 keyboardSubscription state =
-    if state == Playing then
+    if state == Types.Playing then
         Browser.Events.onKeyPress keyboardDecoder
 
     else
         Browser.Events.onKeyPress restartDecoder
 
 
-
--- GRAPHICS
-
-
-viewportSubscription : Sub Msg
-viewportSubscription =
-    Browser.Events.onResize updateViewport
+keyboardDecoder : Decode.Decoder Types.Msg
+keyboardDecoder =
+    Decode.map keyToAction (Decode.field "key" Decode.string)
 
 
-updateViewport : Int -> Int -> Msg
-updateViewport innerWidth innerHeight =
-    UpdateViewport innerHeight innerWidth
+restartDecoder : Decode.Decoder Types.Msg
+restartDecoder =
+    Decode.map
+        (\key ->
+            if key == "r" then
+                Types.Restart
+
+            else
+                Types.Nothing
+        )
+        (Decode.field "key" Decode.string)
 
 
-enemyHeight =
-    25
+keyToAction : String -> Types.Msg
+keyToAction key =
+    case key of
+        "W" ->
+            Types.UpdateInputQueue Types.Up Types.Fast
 
+        "S" ->
+            Types.UpdateInputQueue Types.Down Types.Fast
 
-enemyWidth =
-    25
+        "A" ->
+            Types.UpdateInputQueue Types.Left Types.Fast
 
+        "D" ->
+            Types.UpdateInputQueue Types.Right Types.Fast
 
-goalHeight =
-    150
+        "w" ->
+            Types.UpdateInputQueue Types.Up Types.Normal
 
+        "s" ->
+            Types.UpdateInputQueue Types.Down Types.Normal
 
-goalWidth =
-    150
+        "a" ->
+            Types.UpdateInputQueue Types.Left Types.Normal
 
-
-goalArea =
-    goalHeight * goalWidth
-
-
-playerHeight =
-    100
-
-
-playerWidth =
-    50
-
-
-scoreboardHeight =
-    50
-
-
-message : GameState -> Html Msg
-message state =
-    if state == Complete then
-        div
-            [ Html.Attributes.style "padding-top" "50px"
-            ]
-            [ div
-                [ Html.Attributes.style "text-align" "center"
-                , Html.Attributes.style "font-family" "sans-serif"
-                , Html.Attributes.style "font-size" "32px"
-                , Html.Attributes.style "color" "green"
-                ]
-                [ Html.text "Winner!" ]
-            , div
-                [ Html.Attributes.style "text-align" "center"
-                , Html.Attributes.style "font-family" "sans-serif"
-                , Html.Attributes.style "font-size" "16px"
-                ]
-                [ Html.text "Press r to restart" ]
-            ]
-
-    else if state == GameOver then
-        div
-            [ Html.Attributes.style "padding-top" "50px"
-            ]
-            [ div
-                [ Html.Attributes.style "text-align" "center"
-                , Html.Attributes.style "font-family" "sans-serif"
-                , Html.Attributes.style "font-size" "32px"
-                , Html.Attributes.style "color" "red"
-                ]
-                [ Html.text "Game Over!" ]
-            , div
-                [ Html.Attributes.style "text-align" "center"
-                , Html.Attributes.style "font-family" "sans-serif"
-                , Html.Attributes.style "font-size" "16px"
-                ]
-                [ Html.text "Press r to restart" ]
-            ]
-
-    else
-        Html.text ""
-
-
-goal : Int -> Int -> Html Msg
-goal x y =
-    div
-        [ Html.Attributes.style "width" (numberToPixels goalWidth)
-        , Html.Attributes.style "height" (numberToPixels goalHeight)
-        , Html.Attributes.style "background-color" "green"
-        , Html.Attributes.style "position" "absolute"
-        , Html.Attributes.style "left" (numberToPixels x)
-        , Html.Attributes.style "top" (numberToPixels y)
-        , Html.Attributes.style "z-index" "-1"
-        ]
-        []
-
-
-scoreboard : Int -> Int -> Html Msg
-scoreboard score hiScore =
-    div
-        [ Html.Attributes.style "width" "100%"
-        , Html.Attributes.style "height" (numberToPixels scoreboardHeight)
-        , Html.Attributes.style "text-align" "center"
-        , Html.Attributes.style "font-family" "sans-serif"
-        ]
-        [ div [] [ Html.text ("Score:" ++ " " ++ String.fromInt score) ]
-        , div [] [ Html.text ("Hi-Score:" ++ " " ++ String.fromInt hiScore) ]
-        ]
-
-
-enemies : Enemies -> List (Html Msg)
-enemies nmes =
-    List.map enemy nmes
-
-
-enemy : Enemy -> Html Msg
-enemy nme =
-    div
-        [ Html.Attributes.style "position" "absolute"
-        , Html.Attributes.style "left" (numberToPixels nme.x)
-        , Html.Attributes.style "top" (numberToPixels nme.y)
-        , Html.Attributes.style "transform" "translate(-50%,-50%)"
-        , Html.Attributes.style "z-index" "1"
-        ]
-        [ svg
-            [ width <| numberToPixels enemyWidth
-            , height <| numberToPixels enemyHeight
-            ]
-            [ circle
-                [ fill "red"
-                , cx <| numberToPixels (enemyWidth // 2)
-                , cy <| numberToPixels (enemyHeight // 2)
-                , r <| numberToPixels (enemyWidth // 2)
-                ]
-                []
-            ]
-        ]
-
-
-player : Action -> Int -> Int -> Html Msg
-player heading x y =
-    div
-        [ Html.Attributes.style "position" "absolute"
-        , Html.Attributes.style "left" (numberToPixels x)
-        , Html.Attributes.style "top" (numberToPixels y)
-        , Html.Attributes.style "transform" "translate(-50%,-50%)"
-        ]
-        [ svg
-            [ width <| numberToPixels playerWidth
-            , height <| numberToPixels playerHeight
-            ]
-            [ rect
-                [ fill "blue"
-                , width <| numberToPixels playerWidth
-                , height <| numberToPixels playerHeight
-                ]
-                []
-            , chevron heading
-            ]
-        ]
-
-
-chevron : Action -> Html Msg
-chevron heading =
-    let
-        iconHeight =
-            22
-
-        iconWidth =
-            16
-
-        icon : Int -> Int -> String -> Html Msg
-        icon xPos yPos transformation =
-            svg
-                [ fill "white"
-                , overflow "visible"
-                , x (String.fromInt xPos)
-                , y (String.fromInt yPos)
-                ]
-                [ Svg.path
-                    [ d "m 4 1 L 10 1 L 20 12 L 10 23 L 4 23 L 14 12 Z"
-                    , fill "white"
-                    , Html.Attributes.style "transform" transformation
-                    ]
-                    []
-                ]
-    in
-    case heading of
-        Up ->
-            icon (playerWidth // 2 - (iconHeight // 2)) (playerHeight // 2 + (iconWidth // 2)) "rotate(-90deg)"
-
-        Down ->
-            icon (playerWidth // 2 + (iconHeight // 2)) (playerHeight // 2 - (iconWidth // 2)) "rotate(90deg)"
-
-        Left ->
-            icon (playerWidth // 2 + (iconWidth // 2)) (playerHeight // 2 + (iconHeight // 2)) "rotate(180deg)"
+        "d" ->
+            Types.UpdateInputQueue Types.Right Types.Normal
 
         _ ->
-            icon (playerWidth // 2 - (iconWidth // 2)) (playerHeight // 2 - (iconHeight // 2)) ""
+            Types.Nothing
 
 
-numberToPixels : Int -> String
-numberToPixels coordinate =
-    String.fromInt coordinate ++ "px"
+updateSubscription : Types.Model -> Sub Types.Msg
+updateSubscription model =
+    if model.state == Types.Playing then
+        Browser.Events.onAnimationFrameDelta (\dt -> Types.Tick dt)
+
+    else
+        Sub.none
+
+
+viewportSubscription : Sub Types.Msg
+viewportSubscription =
+    Browser.Events.onResize (\innerWidth innerHeight -> Types.UpdateViewport innerHeight innerWidth)
