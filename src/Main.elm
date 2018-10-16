@@ -19,6 +19,7 @@ type alias Model =
     , goalX : Int
     , goalY : Int
     , hiScore : Int
+    , inputQueue : ( Action, Modifier )
     , playerHeading : Action
     , playerX : Int
     , playerY : Int
@@ -38,12 +39,6 @@ type alias Enemy =
 
 type alias Enemies =
     List Enemy
-
-
-type alias Delta =
-    { enemies : Enemies
-    , score : Int
-    }
 
 
 type Action
@@ -71,9 +66,16 @@ type Msg
     | Restart
     | UpdateEnemies Enemies
     | UpdateGoal ( Int, Int )
-    | UpdateInput Action Modifier
-    | Tick Delta
+    | UpdateInputQueue Action Modifier
+    | Tick Float
     | UpdateViewport Int Int
+
+
+type alias PlayerUpdate =
+    { heading : Action
+    , x : Int
+    , y : Int
+    }
 
 
 
@@ -94,6 +96,7 @@ initialModel hiScore =
     , goalX = -999
     , goalY = -999
     , hiScore = hiScore
+    , inputQueue = ( Other, Normal )
     , playerHeading = Right
     , playerX = playerWidth // 2
     , playerY = playerHeight // 2
@@ -148,9 +151,17 @@ update msg model =
             ( initialModel <| Basics.max model.score model.hiScore, initialTask () )
 
         Tick dt ->
+            let
+                playerUpdate =
+                    updatePlayerPosition model
+            in
             ( { model
-                | enemies = dt.enemies
-                , score = Basics.max (model.score - dt.score) 0
+                | enemies = List.map (updateEnemyPosition model.playerX model.playerY) model.enemies
+                , inputQueue = ( Other, Normal )
+                , playerHeading = playerUpdate.heading
+                , playerX = playerUpdate.x
+                , playerY = playerUpdate.y
+                , score = Basics.max (model.score - 100) 0
                 , state = getState model
               }
             , Cmd.none
@@ -170,62 +181,13 @@ update msg model =
             , Cmd.none
             )
 
-        UpdateInput key modifier ->
-            updateKey key modifier model
+        UpdateInputQueue key modifier ->
+            updateInputQueue key modifier model
 
 
-updateKey : Action -> Modifier -> Model -> ( Model, Cmd Msg )
-updateKey key modifier model =
-    let
-        moveDistance =
-            10
-
-        offset =
-            if modifier == Fast then
-                moveDistance * 2
-
-            else
-                moveDistance
-    in
-    case key of
-        Up ->
-            ( Debug.log "model"
-                { model
-                    | playerHeading = Up
-                    , playerY = Basics.max (model.playerY - offset) (playerHeight // 2)
-                }
-            , Cmd.none
-            )
-
-        Down ->
-            ( Debug.log "model"
-                { model
-                    | playerHeading = Down
-                    , playerY = Basics.min (model.playerY + offset) (model.viewportHeight - playerHeight)
-                }
-            , Cmd.none
-            )
-
-        Left ->
-            ( Debug.log "model"
-                { model
-                    | playerHeading = Left
-                    , playerX = Basics.max (model.playerX - offset) moveDistance
-                }
-            , Cmd.none
-            )
-
-        Right ->
-            ( Debug.log "model"
-                { model
-                    | playerHeading = Right
-                    , playerX = Basics.min (model.playerX + offset) (model.viewportWidth - (playerWidth // 2))
-                }
-            , Cmd.none
-            )
-
-        Other ->
-            ( model, Cmd.none )
+updateInputQueue : Action -> Modifier -> Model -> ( Model, Cmd Msg )
+updateInputQueue action modifier model =
+    ( { model | inputQueue = ( action, modifier ) }, Cmd.none )
 
 
 getState : Model -> GameState
@@ -285,33 +247,40 @@ generateEnemy xBound yBound =
         (Random.int 2 5)
 
 
+updatePlayerPosition : Model -> PlayerUpdate
+updatePlayerPosition model =
+    let
+        action =
+            Tuple.first model.inputQueue
 
--- SUBSCRIPTIONS
+        modifier =
+            Tuple.second model.inputQueue
 
+        moveDistance =
+            10
 
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.batch
-        [ keyboardSubscription model.state
-        , updateSubscription model
-        , viewportSubscription
-        ]
+        offset =
+            if modifier == Fast then
+                moveDistance * 2
 
+            else
+                moveDistance
+    in
+    case action of
+        Up ->
+            { heading = Up, x = model.playerX, y = Basics.max (model.playerY - offset) (playerHeight // 2) }
 
-updateSubscription : Model -> Sub Msg
-updateSubscription model =
-    if model.state == Playing then
-        Time.every 16 (\_ -> Tick (getDelta model))
+        Down ->
+            { heading = Down, x = model.playerX, y = Basics.min (model.playerY + offset) (model.viewportHeight - playerHeight) }
 
-    else
-        Sub.none
+        Left ->
+            { heading = Left, x = Basics.max (model.playerX - offset) moveDistance, y = model.playerY }
 
+        Right ->
+            { heading = Right, x = Basics.min (model.playerX + offset) (model.viewportWidth - (playerWidth // 2)), y = model.playerY }
 
-getDelta : Model -> Delta
-getDelta model =
-    { enemies = List.map (updateEnemyPosition model.playerX model.playerY) model.enemies
-    , score = 100
-    }
+        _ ->
+            { heading = model.playerHeading, x = model.playerX, y = model.playerY }
 
 
 updateEnemyPosition : Int -> Int -> Enemy -> Enemy
@@ -330,6 +299,28 @@ findPlayer playerCoordinate enemyCoordinate enemySpeed =
 
     else
         enemyCoordinate + enemySpeed
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ keyboardSubscription model.state
+        , updateSubscription model
+        , viewportSubscription
+        ]
+
+
+updateSubscription : Model -> Sub Msg
+updateSubscription model =
+    if model.state == Playing then
+        Browser.Events.onAnimationFrameDelta (\dt -> Tick dt)
+
+    else
+        Sub.none
 
 
 
@@ -377,28 +368,28 @@ keyToAction : String -> Msg
 keyToAction key =
     case key of
         "W" ->
-            UpdateInput Up Fast
+            UpdateInputQueue Up Fast
 
         "S" ->
-            UpdateInput Down Fast
+            UpdateInputQueue Down Fast
 
         "A" ->
-            UpdateInput Left Fast
+            UpdateInputQueue Left Fast
 
         "D" ->
-            UpdateInput Right Fast
+            UpdateInputQueue Right Fast
 
         "w" ->
-            UpdateInput Up Normal
+            UpdateInputQueue Up Normal
 
         "s" ->
-            UpdateInput Down Normal
+            UpdateInputQueue Down Normal
 
         "a" ->
-            UpdateInput Left Normal
+            UpdateInputQueue Left Normal
 
         "d" ->
-            UpdateInput Right Normal
+            UpdateInputQueue Right Normal
 
         _ ->
             Nothing
