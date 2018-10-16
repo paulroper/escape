@@ -8,10 +8,6 @@ import Svg.Attributes exposing (..)
 import Types
 
 
-
--- VIEW
-
-
 view : Types.Model -> Html Types.Msg
 view model =
     div []
@@ -25,10 +21,6 @@ view model =
                 ++ enemies model.enemies
             )
         ]
-
-
-
--- GRAPHICS
 
 
 enemyHeight =
@@ -45,10 +37,6 @@ goalHeight =
 
 goalWidth =
     150
-
-
-goalArea =
-    goalHeight * goalWidth
 
 
 playerHeight =
