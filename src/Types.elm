@@ -19,7 +19,7 @@ type alias Model =
 type alias Enemy =
     { x : Int
     , y : Int
-    , speed : Int
+    , speed : Float
     }
 
 

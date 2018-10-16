@@ -90,14 +90,10 @@ update msg model =
             ( { model | state = Types.Playing }, Cmd.none )
 
         Types.Tick dt ->
-            let
-                playerUpdate =
-                    updatePlayer model
-            in
             ( { model
-                | enemies = List.map (updateEnemyPosition model.player.x model.player.y) model.enemies
+                | enemies = List.map (updateEnemyPosition dt model.player) model.enemies
                 , inputQueue = ( Types.Other, Types.Normal )
-                , player = updatePlayer model
+                , player = updatePlayer dt model
                 , score = Basics.max (model.score - 100) 0
                 , state = getState model
               }
@@ -181,11 +177,11 @@ generateEnemy xBound yBound =
         (\x y speed -> { speed = speed, x = x, y = y })
         (Random.int 0 xBound)
         (Random.int 0 yBound)
-        (Random.int 2 5)
+        (Random.float 0.2 0.5)
 
 
-updatePlayer : Types.Model -> Types.Player
-updatePlayer model =
+updatePlayer : Float -> Types.Model -> Types.Player
+updatePlayer dt model =
     let
         action =
             Tuple.first model.inputQueue
@@ -193,15 +189,17 @@ updatePlayer model =
         modifier =
             Tuple.second model.inputQueue
 
-        moveDistance =
-            10
+        moveSpeed =
+            0.9
 
         offset =
-            if modifier == Types.Fast then
-                moveDistance * 2
+            Basics.round
+                (if modifier == Types.Fast then
+                    (moveSpeed * 1.5) * dt
 
-            else
-                moveDistance
+                 else
+                    moveSpeed * dt
+                )
     in
     case action of
         Types.Up ->
@@ -218,7 +216,7 @@ updatePlayer model =
 
         Types.Left ->
             { heading = Types.Left
-            , x = Basics.max (model.player.x - offset) moveDistance
+            , x = Basics.max (model.player.x - offset) (View.playerWidth // 2)
             , y = model.player.y
             }
 
@@ -235,22 +233,29 @@ updatePlayer model =
             }
 
 
-updateEnemyPosition : Int -> Int -> Types.Enemy -> Types.Enemy
-updateEnemyPosition playerX playerY nme =
-    { nme | x = findPlayer playerX nme.x nme.speed, y = findPlayer playerY nme.y nme.speed }
+updateEnemyPosition : Float -> Types.Player -> Types.Enemy -> Types.Enemy
+updateEnemyPosition dt player enemy =
+    { enemy
+        | x = findPlayer dt player.x enemy.x enemy.speed
+        , y = findPlayer dt player.y enemy.y enemy.speed
+    }
 
 
-findPlayer : Int -> Int -> Int -> Int
-findPlayer playerCoordinate enemyCoordinate enemySpeed =
+findPlayer : Float -> Int -> Int -> Float -> Int
+findPlayer dt playerCoordinate enemyCoordinate enemySpeed =
+    let
+        distance =
+            Basics.round (enemySpeed * dt)
+    in
     -- Add tolerance for where enemy is on same horizontal / vertical line as player to stop janky animation
-    if Basics.abs (enemyCoordinate - playerCoordinate) <= enemySpeed then
+    if Basics.abs (enemyCoordinate - playerCoordinate) <= distance then
         playerCoordinate
 
     else if enemyCoordinate - playerCoordinate > 0 then
-        enemyCoordinate - enemySpeed
+        enemyCoordinate - distance
 
     else
-        enemyCoordinate + enemySpeed
+        enemyCoordinate + distance
 
 
 
