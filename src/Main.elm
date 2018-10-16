@@ -16,8 +16,7 @@ import Time
 
 type alias Model =
     { enemies : Enemies
-    , goalX : Int
-    , goalY : Int
+    , goal : Goal
     , hiScore : Int
     , inputQueue : ( Action, Modifier )
     , player : Player
@@ -32,6 +31,12 @@ type alias Enemy =
     { x : Int
     , y : Int
     , speed : Int
+    }
+
+
+type alias Goal =
+    { x : Int
+    , y : Int
     }
 
 
@@ -91,8 +96,7 @@ main =
 
 initialModel hiScore =
     { enemies = []
-    , goalX = -999
-    , goalY = -999
+    , goal = { x = -999, y = -999 }
     , hiScore = hiScore
     , inputQueue = ( Other, Normal )
     , player =
@@ -169,7 +173,7 @@ update msg model =
             ( { model | enemies = nmes }, Cmd.none )
 
         UpdateGoal points ->
-            ( { model | goalX = Tuple.first points, goalY = Tuple.second points }, Cmd.none )
+            ( { model | goal = { x = Tuple.first points, y = Tuple.second points } }, Cmd.none )
 
         UpdateViewport innerHeight innerWidth ->
             ( { model
@@ -203,8 +207,8 @@ getState model =
 inGoal : Model -> Bool
 inGoal model =
     if
-        (model.player.x >= model.goalX && model.player.x <= (model.goalX + goalWidth))
-            && (model.player.y >= model.goalY && model.player.y <= (model.goalY + goalHeight))
+        (model.player.x >= model.goal.x && model.player.x <= (model.goal.x + goalWidth))
+            && (model.player.y >= model.goal.y && model.player.y <= (model.goal.y + goalHeight))
     then
         True
 
@@ -348,7 +352,7 @@ view model =
             [ Html.Attributes.style "position" "relative" ]
             ([ message model.state
              , player model.player.heading model.player.x model.player.y
-             , goal model.goalX model.goalY
+             , goal model.goal.x model.goal.y
              ]
                 ++ enemies model.enemies
             )
