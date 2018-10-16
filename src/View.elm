@@ -91,6 +91,25 @@ message state =
                 [ Html.text "Press r to restart" ]
             ]
 
+    else if state == Types.Paused then
+        div
+            [ Html.Attributes.style "padding-top" "50px"
+            ]
+            [ div
+                [ Html.Attributes.style "text-align" "center"
+                , Html.Attributes.style "font-family" "sans-serif"
+                , Html.Attributes.style "font-size" "32px"
+                , Html.Attributes.style "color" "blue"
+                ]
+                [ Html.text "Paused!" ]
+            , div
+                [ Html.Attributes.style "text-align" "center"
+                , Html.Attributes.style "font-family" "sans-serif"
+                , Html.Attributes.style "font-size" "16px"
+                ]
+                [ Html.text "Press p to resume" ]
+            ]
+
     else
         Html.text ""
 

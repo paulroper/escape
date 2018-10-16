@@ -80,8 +80,14 @@ update msg model =
         Types.Nothing ->
             ( model, Cmd.none )
 
+        Types.Pause ->
+            ( { model | state = Types.Paused }, Cmd.none )
+
         Types.Restart ->
             ( initialModel <| Basics.max model.score model.hiScore, initialTask () )
+
+        Types.Resume ->
+            ( { model | state = Types.Playing }, Cmd.none )
 
         Types.Tick dt ->
             let
@@ -265,6 +271,9 @@ keyboardSubscription state =
     if state == Types.Playing then
         Browser.Events.onKeyPress keyboardDecoder
 
+    else if state == Types.Paused then
+        Browser.Events.onKeyPress pausedDecoder
+
     else
         Browser.Events.onKeyPress restartDecoder
 
@@ -272,6 +281,19 @@ keyboardSubscription state =
 keyboardDecoder : Decode.Decoder Types.Msg
 keyboardDecoder =
     Decode.map keyToAction (Decode.field "key" Decode.string)
+
+
+pausedDecoder : Decode.Decoder Types.Msg
+pausedDecoder =
+    Decode.map
+        (\key ->
+            if key == "p" then
+                Types.Resume
+
+            else
+                Types.Nothing
+        )
+        (Decode.field "key" Decode.string)
 
 
 restartDecoder : Decode.Decoder Types.Msg
@@ -313,6 +335,9 @@ keyToAction key =
 
         "d" ->
             Types.UpdateInputQueue Types.Right Types.Normal
+
+        "p" ->
+            Types.Pause
 
         _ ->
             Types.Nothing

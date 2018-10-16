@@ -49,9 +49,10 @@ type Action
 
 
 type GameState
-    = Playing
-    | Complete
+    = Complete
     | GameOver
+    | Paused
+    | Playing
 
 
 type Modifier
@@ -62,9 +63,11 @@ type Modifier
 type Msg
     = GetViewport Browser.Dom.Viewport
     | Nothing
+    | Pause
     | Restart
+    | Resume
+    | Tick Float
     | UpdateEnemies Enemies
     | UpdateGoal ( Int, Int )
     | UpdateInputQueue Action Modifier
-    | Tick Float
     | UpdateViewport Int Int
