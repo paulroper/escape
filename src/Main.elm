@@ -261,7 +261,7 @@ subscriptions : Types.Model -> Sub Types.Msg
 subscriptions model =
     Sub.batch
         [ keyboardSubscription model.state
-        , updateSubscription model
+        , tickSubscription model
         , viewportSubscription
         ]
 
@@ -343,8 +343,8 @@ keyToAction key =
             Types.Nothing
 
 
-updateSubscription : Types.Model -> Sub Types.Msg
-updateSubscription model =
+tickSubscription : Types.Model -> Sub Types.Msg
+tickSubscription model =
     if model.state == Types.Playing then
         Browser.Events.onAnimationFrameDelta (\dt -> Types.Tick dt)
 
