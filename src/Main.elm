@@ -284,14 +284,11 @@ subscriptions model =
 
 inputSubscription : Types.GameState -> List (Sub Types.Msg)
 inputSubscription state =
-    if state == Types.Playing then
+    if state == Types.Playing || state == Types.Paused then
         [ Browser.Events.onKeyDown keyDownDecoder
         , Browser.Events.onKeyUp keyUpDecoder
-        , Browser.Events.onKeyPress pausedDecoder
+        , Browser.Events.onKeyPress (pauseDecoder state)
         ]
-
-    else if state == Types.Paused then
-        [ Browser.Events.onKeyPress pausedDecoder ]
 
     else
         [ Browser.Events.onKeyPress restartDecoder ]
@@ -347,11 +344,14 @@ keyDownToAction key =
         Types.Nothing
 
 
-pausedDecoder : Decode.Decoder Types.Msg
-pausedDecoder =
+pauseDecoder : Types.GameState -> Decode.Decoder Types.Msg
+pauseDecoder state =
     Decode.map
         (\key ->
-            if key == "p" then
+            if state == Types.Playing && key == "p" then
+                Types.Pause
+
+            else if state == Types.Paused && key == "p" then
                 Types.Resume
 
             else
