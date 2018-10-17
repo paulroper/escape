@@ -8,6 +8,7 @@ type alias Model =
     , goal : Goal
     , hiScore : Int
     , inputQueue : ( Action, Modifier )
+    , keysDown : List Action
     , player : Player
     , score : Int
     , state : GameState
@@ -61,7 +62,7 @@ type Modifier
 
 
 type Msg
-    = ClearInputQueue
+    = ClearInputQueue Action
     | GetViewport Browser.Dom.Viewport
     | Nothing
     | Pause

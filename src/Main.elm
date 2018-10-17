@@ -28,6 +28,7 @@ initialModel hiScore =
     , goal = { x = -999, y = -999 }
     , hiScore = hiScore
     , inputQueue = ( Types.Other, Types.Normal )
+    , keysDown = []
     , player =
         { heading = Types.Right
         , x = View.playerWidth // 2
@@ -59,8 +60,8 @@ init _ =
 update : Types.Msg -> Types.Model -> ( Types.Model, Cmd Types.Msg )
 update msg model =
     case msg of
-        Types.ClearInputQueue ->
-            ( { model | inputQueue = ( Types.Other, Types.Normal ) }, Cmd.none )
+        Types.ClearInputQueue action ->
+            ( clearInputQueue action model, Cmd.none )
 
         Types.GetViewport viewport ->
             let
@@ -116,13 +117,20 @@ update msg model =
             , Cmd.none
             )
 
-        Types.UpdateInputQueue key modifier ->
-            updateInputQueue key modifier model
+        Types.UpdateInputQueue action modifier ->
+            ( { model | keysDown = action :: model.keysDown, inputQueue = ( action, modifier ) }, Cmd.none )
 
 
-updateInputQueue : Types.Action -> Types.Modifier -> Types.Model -> ( Types.Model, Cmd Types.Msg )
-updateInputQueue action modifier model =
-    ( { model | inputQueue = ( action, modifier ) }, Cmd.none )
+clearInputQueue : Types.Action -> Types.Model -> Types.Model
+clearInputQueue action model =
+    let
+        newKeysDown =
+            List.filter (\a -> a /= action) model.keysDown
+
+        lastKey =
+            Maybe.withDefault Types.Other (List.head newKeysDown)
+    in
+    { model | keysDown = newKeysDown, inputQueue = ( lastKey, Tuple.second model.inputQueue ) }
 
 
 getState : Types.Model -> Types.GameState
@@ -192,7 +200,7 @@ updatePlayer dt model =
             Tuple.second model.inputQueue
 
         moveSpeed =
-            0.5
+            0.45
 
         offset =
             Basics.round
@@ -277,7 +285,10 @@ subscriptions model =
 inputSubscription : Types.GameState -> List (Sub Types.Msg)
 inputSubscription state =
     if state == Types.Playing then
-        [ Browser.Events.onKeyDown keyDownDecoder, Browser.Events.onKeyUp keyUpDecoder ]
+        [ Browser.Events.onKeyDown keyDownDecoder
+        , Browser.Events.onKeyUp keyUpDecoder
+        , Browser.Events.onKeyPress pausedDecoder
+        ]
 
     else if state == Types.Paused then
         [ Browser.Events.onKeyPress pausedDecoder ]
@@ -296,10 +307,29 @@ keyUpDecoder =
     Decode.map keyUpToAction (Decode.field "key" Decode.string)
 
 
+keyToAction : String -> Types.Action
+keyToAction key =
+    case String.toLower key of
+        "w" ->
+            Types.Up
+
+        "s" ->
+            Types.Down
+
+        "a" ->
+            Types.Left
+
+        "d" ->
+            Types.Right
+
+        _ ->
+            Types.Other
+
+
 keyUpToAction : String -> Types.Msg
 keyUpToAction key =
-    if List.any (\k -> key == k) [ "W", "S", "A", "D", "w", "s", "a", "d" ] then
-        Types.ClearInputQueue
+    if List.any (\k -> String.toLower key == k) [ "w", "s", "a", "d" ] then
+        Types.ClearInputQueue (keyToAction key)
 
     else
         Types.Nothing
@@ -307,36 +337,14 @@ keyUpToAction key =
 
 keyDownToAction : String -> Types.Msg
 keyDownToAction key =
-    case key of
-        "W" ->
-            Types.UpdateInputQueue Types.Up Types.Fast
+    if List.any (\k -> k == key) [ "W", "S", "A", "D" ] then
+        Types.UpdateInputQueue (keyToAction key) Types.Fast
 
-        "S" ->
-            Types.UpdateInputQueue Types.Down Types.Fast
+    else if List.any (\k -> k == key) [ "w", "s", "a", "d" ] then
+        Types.UpdateInputQueue (keyToAction key) Types.Normal
 
-        "A" ->
-            Types.UpdateInputQueue Types.Left Types.Fast
-
-        "D" ->
-            Types.UpdateInputQueue Types.Right Types.Fast
-
-        "w" ->
-            Types.UpdateInputQueue Types.Up Types.Normal
-
-        "s" ->
-            Types.UpdateInputQueue Types.Down Types.Normal
-
-        "a" ->
-            Types.UpdateInputQueue Types.Left Types.Normal
-
-        "d" ->
-            Types.UpdateInputQueue Types.Right Types.Normal
-
-        "p" ->
-            Types.Pause
-
-        _ ->
-            Types.Nothing
+    else
+        Types.Nothing
 
 
 pausedDecoder : Decode.Decoder Types.Msg
