@@ -61,7 +61,8 @@ type Modifier
 
 
 type Msg
-    = GetViewport Browser.Dom.Viewport
+    = ClearInputQueue
+    | GetViewport Browser.Dom.Viewport
     | Nothing
     | Pause
     | Restart

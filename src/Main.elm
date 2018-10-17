@@ -59,6 +59,9 @@ init _ =
 update : Types.Msg -> Types.Model -> ( Types.Model, Cmd Types.Msg )
 update msg model =
     case msg of
+        Types.ClearInputQueue ->
+            ( { model | inputQueue = ( Types.Other, Types.Normal ) }, Cmd.none )
+
         Types.GetViewport viewport ->
             let
                 viewportHeight =
@@ -92,7 +95,6 @@ update msg model =
         Types.Tick dt ->
             ( { model
                 | enemies = List.map (updateEnemyPosition dt model.player) model.enemies
-                , inputQueue = ( Types.Other, Types.Normal )
                 , player = updatePlayer dt model
                 , score = Basics.max (model.score - 100) 0
                 , state = getState model
@@ -190,7 +192,7 @@ updatePlayer dt model =
             Tuple.second model.inputQueue
 
         moveSpeed =
-            0.9
+            0.5
 
         offset =
             Basics.round
@@ -265,57 +267,46 @@ findPlayer dt playerCoordinate enemyCoordinate enemySpeed =
 subscriptions : Types.Model -> Sub Types.Msg
 subscriptions model =
     Sub.batch
-        [ keyboardSubscription model.state
-        , tickSubscription model
-        , viewportSubscription
-        ]
+        ([ tickSubscription model
+         , viewportSubscription
+         ]
+            ++ inputSubscription model.state
+        )
 
 
-keyboardSubscription : Types.GameState -> Sub Types.Msg
-keyboardSubscription state =
+inputSubscription : Types.GameState -> List (Sub Types.Msg)
+inputSubscription state =
     if state == Types.Playing then
-        Browser.Events.onKeyPress keyboardDecoder
+        [ Browser.Events.onKeyDown keyDownDecoder, Browser.Events.onKeyUp keyUpDecoder ]
 
     else if state == Types.Paused then
-        Browser.Events.onKeyPress pausedDecoder
+        [ Browser.Events.onKeyPress pausedDecoder ]
 
     else
-        Browser.Events.onKeyPress restartDecoder
+        [ Browser.Events.onKeyPress restartDecoder ]
 
 
-keyboardDecoder : Decode.Decoder Types.Msg
-keyboardDecoder =
-    Decode.map keyToAction (Decode.field "key" Decode.string)
+keyDownDecoder : Decode.Decoder Types.Msg
+keyDownDecoder =
+    Decode.map keyDownToAction (Decode.field "key" Decode.string)
 
 
-pausedDecoder : Decode.Decoder Types.Msg
-pausedDecoder =
-    Decode.map
-        (\key ->
-            if key == "p" then
-                Types.Resume
-
-            else
-                Types.Nothing
-        )
-        (Decode.field "key" Decode.string)
+keyUpDecoder : Decode.Decoder Types.Msg
+keyUpDecoder =
+    Decode.map keyUpToAction (Decode.field "key" Decode.string)
 
 
-restartDecoder : Decode.Decoder Types.Msg
-restartDecoder =
-    Decode.map
-        (\key ->
-            if key == "r" then
-                Types.Restart
+keyUpToAction : String -> Types.Msg
+keyUpToAction key =
+    if List.any (\k -> key == k) [ "W", "S", "A", "D", "w", "s", "a", "d" ] then
+        Types.ClearInputQueue
 
-            else
-                Types.Nothing
-        )
-        (Decode.field "key" Decode.string)
+    else
+        Types.Nothing
 
 
-keyToAction : String -> Types.Msg
-keyToAction key =
+keyDownToAction : String -> Types.Msg
+keyDownToAction key =
     case key of
         "W" ->
             Types.UpdateInputQueue Types.Up Types.Fast
@@ -346,6 +337,32 @@ keyToAction key =
 
         _ ->
             Types.Nothing
+
+
+pausedDecoder : Decode.Decoder Types.Msg
+pausedDecoder =
+    Decode.map
+        (\key ->
+            if key == "p" then
+                Types.Resume
+
+            else
+                Types.Nothing
+        )
+        (Decode.field "key" Decode.string)
+
+
+restartDecoder : Decode.Decoder Types.Msg
+restartDecoder =
+    Decode.map
+        (\key ->
+            if key == "r" then
+                Types.Restart
+
+            else
+                Types.Nothing
+        )
+        (Decode.field "key" Decode.string)
 
 
 tickSubscription : Types.Model -> Sub Types.Msg
