@@ -36,7 +36,17 @@ suite =
     describe "The Main module"
         [ describe "Update"
             [ describe "Main.update"
-                [ describe "Types.GetViewport"
+                [ describe "Types.ClearKeyDown"
+                    [ test "removes the given action from keys down and moves last key down into input queue to stop jankiness" <|
+                        \_ ->
+                            Expect.equal
+                                ( { model | keysDown = [ Types.Up ], inputQueue = ( Types.Up, Types.Fast ) }, Cmd.none )
+                                (Main.update
+                                    (Types.ClearKeyDown Types.Right)
+                                    { model | inputQueue = ( Types.Right, Types.Fast ), keysDown = [ Types.Right, Types.Up ] }
+                                )
+                    ]
+                , describe "Types.GetViewport"
                     [ test "saves the viewport in the model" <|
                         let
                             viewportHeight =
@@ -171,27 +181,27 @@ suite =
                 [ test "clears Up action from input queue when w is pressed" <|
                     \_ ->
                         Expect.equal
-                            (Types.ClearInputQueue Types.Up)
+                            (Types.ClearKeyDown Types.Up)
                             (decodeKeyUpEvent <| keyEvent "w")
                 , test "clears Down action from input queue when s is pressed" <|
                     \_ ->
                         Expect.equal
-                            (Types.ClearInputQueue Types.Down)
+                            (Types.ClearKeyDown Types.Down)
                             (decodeKeyUpEvent <| keyEvent "s")
                 , test "clears Left action from input queue when a is pressed" <|
                     \_ ->
                         Expect.equal
-                            (Types.ClearInputQueue Types.Left)
+                            (Types.ClearKeyDown Types.Left)
                             (decodeKeyUpEvent <| keyEvent "a")
                 , test "clears Right action from input queue when d is pressed" <|
                     \_ ->
                         Expect.equal
-                            (Types.ClearInputQueue Types.Right)
+                            (Types.ClearKeyDown Types.Right)
                             (decodeKeyUpEvent <| keyEvent "d")
                 , test "handles speedy movement" <|
                     \_ ->
                         Expect.equal
-                            (Types.ClearInputQueue Types.Up)
+                            (Types.ClearKeyDown Types.Up)
                             (decodeKeyUpEvent <| keyEvent "W")
                 , test "does nothing if non-movement key is pressed" <|
                     \_ ->

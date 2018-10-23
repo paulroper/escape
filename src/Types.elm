@@ -62,7 +62,7 @@ type Modifier
 
 
 type Msg
-    = ClearInputQueue Action
+    = ClearKeyDown Action
     | GetViewport Browser.Dom.Viewport
     | Nothing
     | Pause

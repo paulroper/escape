@@ -60,8 +60,8 @@ init _ =
 update : Types.Msg -> Types.Model -> ( Types.Model, Cmd Types.Msg )
 update msg model =
     case msg of
-        Types.ClearInputQueue action ->
-            ( clearInputQueue action model, Cmd.none )
+        Types.ClearKeyDown action ->
+            ( clearKeyDown action model, Cmd.none )
 
         Types.GetViewport viewport ->
             let
@@ -121,8 +121,8 @@ update msg model =
             )
 
 
-clearInputQueue : Types.Action -> Types.Model -> Types.Model
-clearInputQueue action model =
+clearKeyDown : Types.Action -> Types.Model -> Types.Model
+clearKeyDown action model =
     let
         newKeysDown =
             List.filter (\a -> a /= action) model.keysDown
@@ -326,7 +326,7 @@ keyToAction key =
 keyUpToAction : String -> Types.Msg
 keyUpToAction key =
     if List.any (\k -> String.toLower key == k) [ "w", "s", "a", "d" ] then
-        Types.ClearInputQueue (keyToAction key)
+        Types.ClearKeyDown (keyToAction key)
 
     else
         Types.Nothing
