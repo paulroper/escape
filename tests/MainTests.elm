@@ -27,10 +27,39 @@ decodeKeyUpEvent event =
         (Decode.decodeString Main.keyUpDecoder event)
 
 
+model =
+    Main.initialModel 0
+
+
 suite : Test
 suite =
     describe "The Main module"
-        [ describe "Subscriptions"
+        [ describe "Update"
+            [ describe "Main.update"
+                [ describe "Types.Nothing"
+                    [ test "leaves the model untouched" <|
+                        \_ ->
+                            Expect.equal
+                                ( model, Cmd.none )
+                                (Main.update Types.Nothing model)
+                    ]
+                , describe "Types.Pause"
+                    [ test "sets the game state to paused" <|
+                        \_ ->
+                            Expect.equal
+                                ( { model | state = Types.Paused }, Cmd.none )
+                                (Main.update Types.Pause model)
+                    ]
+                , describe "Types.Resume"
+                    [ test "sets the game state to playing" <|
+                        \_ ->
+                            Expect.equal
+                                ( { model | state = Types.Playing }, Cmd.none )
+                                (Main.update Types.Resume model)
+                    ]
+                ]
+            ]
+        , describe "Subscriptions"
             [ describe "Main.keyDownDecoder"
                 [ test "updates input queue with Up Fast when W is pressed" <|
                     \_ ->

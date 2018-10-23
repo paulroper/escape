@@ -1,4 +1,4 @@
-module Main exposing (keyDownDecoder, keyUpDecoder, main)
+module Main exposing (initialModel, keyDownDecoder, keyUpDecoder, main, update)
 
 import Browser
 import Browser.Dom
