@@ -36,7 +36,35 @@ suite =
     describe "The Main module"
         [ describe "Update"
             [ describe "Main.update"
-                [ describe "Types.Nothing"
+                [ describe "Types.GetViewport"
+                    [ test "saves the viewport in the model" <|
+                        let
+                            viewportHeight =
+                                50
+
+                            viewportWidth =
+                                100
+
+                            viewport =
+                                { scene =
+                                    { height = 0
+                                    , width = 0
+                                    }
+                                , viewport =
+                                    { height = 50
+                                    , width = 100
+                                    , x = 0
+                                    , y = 0
+                                    }
+                                }
+                        in
+                        \_ ->
+                            -- We can't compare the tasks that're fired here, only the model
+                            Expect.equal
+                                { model | viewportHeight = 50, viewportWidth = 100 }
+                                (Tuple.first <| Main.update (Types.GetViewport viewport) model)
+                    ]
+                , describe "Types.Nothing"
                     [ test "leaves the model untouched" <|
                         \_ ->
                             Expect.equal
