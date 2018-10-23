@@ -57,6 +57,38 @@ suite =
                                 ( { model | state = Types.Playing }, Cmd.none )
                                 (Main.update Types.Resume model)
                     ]
+                , describe "Types.UpdateEnemies"
+                    [ test "updates the enemies in the model" <|
+                        let
+                            enemies =
+                                [ { speed = 0.3, x = 10, y = 10 } ]
+                        in
+                        \_ ->
+                            Expect.equal
+                                ( { model | enemies = enemies }, Cmd.none )
+                                (Main.update (Types.UpdateEnemies enemies) model)
+                    ]
+                , describe "Types.UpdateGoal"
+                    [ test "updates the goal in the model" <|
+                        \_ ->
+                            Expect.equal
+                                ( { model | goal = { x = 5, y = 5 } }, Cmd.none )
+                                (Main.update (Types.UpdateGoal ( 5, 5 )) model)
+                    ]
+                , describe "Types.UpdateInputQueue"
+                    [ test "updates the keys down and input queue in the state" <|
+                        \_ ->
+                            Expect.equal
+                                ( { model | keysDown = [ Types.Up, Types.Down ], inputQueue = ( Types.Up, Types.Fast ) }, Cmd.none )
+                                (Main.update (Types.UpdateInputQueue Types.Up Types.Fast) { model | keysDown = [ Types.Down ] })
+                    ]
+                , describe "Types.UpdateViewport"
+                    [ test "updates the viewport in the model" <|
+                        \_ ->
+                            Expect.equal
+                                ( { model | viewportHeight = 5, viewportWidth = 10 }, Cmd.none )
+                                (Main.update (Types.UpdateViewport 5 10) model)
+                    ]
                 ]
             ]
         , describe "Subscriptions"

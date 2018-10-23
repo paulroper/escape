@@ -109,6 +109,9 @@ update msg model =
         Types.UpdateGoal points ->
             ( { model | goal = { x = Tuple.first points, y = Tuple.second points } }, Cmd.none )
 
+        Types.UpdateInputQueue action modifier ->
+            ( { model | keysDown = action :: model.keysDown, inputQueue = ( action, modifier ) }, Cmd.none )
+
         Types.UpdateViewport innerHeight innerWidth ->
             ( { model
                 | viewportHeight = innerHeight
@@ -116,9 +119,6 @@ update msg model =
               }
             , Cmd.none
             )
-
-        Types.UpdateInputQueue action modifier ->
-            ( { model | keysDown = action :: model.keysDown, inputQueue = ( action, modifier ) }, Cmd.none )
 
 
 clearInputQueue : Types.Action -> Types.Model -> Types.Model
