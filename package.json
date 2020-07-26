@@ -4,16 +4,16 @@
   "description": "Learning Elm through gamez",
   "main": "index.js",
   "repository": "git@github.com:paulroper/escape.git",
-  "author": "Paul Roper <paul.roper@red-badger.com>",
+  "author": "Paul Roper <paul.roper@pm.me>",
   "license": "MIT",
   "dependencies": {
-    "elm": "^0.19.0-bugfix2"
+    "elm": "0.19.1"
   },
   "scripts": {
     "start": "elm reactor",
     "test": "elm-test"
   },
   "devDependencies": {
-    "elm-test": "^0.19.0-beta10"
+    "elm-test": "0.19.1"
   }
 }
